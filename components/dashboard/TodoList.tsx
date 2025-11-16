@@ -1,25 +1,125 @@
 // components/dashboard/TodoList.tsx
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Note } from '../../app/types';
 
 interface TodoListProps {
   todoItems: Note[];
   onCompleteTodo: (noteId: string, completed: boolean) => void;
-  onDeleteTodo: (noteId: string) => void;
+  onDeleteTodo?: (noteId: string) => void; // Optional since we don't use it
+  onAddTodo?: (content: string) => void; // New prop for adding todos
 }
 
 export default function TodoList({ 
   todoItems, 
-  onCompleteTodo, 
-  onDeleteTodo 
+  onCompleteTodo,
+  onAddTodo
 }: TodoListProps) {
   const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('all');
   const [sortBy, setSortBy] = useState<'date' | 'priority'>('date');
+  const [savedTodos, setSavedTodos] = useState<Note[]>([]);
+  const [newTodoText, setNewTodoText] = useState('');
+  const [showAddTodo, setShowAddTodo] = useState(false);
+  
+  // Load todos from localStorage on initial render
+  useEffect(() => {
+    const savedTodosString = localStorage.getItem('exeai-todos');
+    if (savedTodosString) {
+      try {
+        const parsed = JSON.parse(savedTodosString);
+        // Convert date strings back to Date objects if needed
+        const formattedTodos = parsed.map((todo: any) => ({
+          ...todo,
+          createdAt: new Date(todo.createdAt)
+        }));
+        setSavedTodos(formattedTodos);
+      } catch (e) {
+        console.error('Error parsing saved todos', e);
+      }
+    }
+  }, []);
+  
+  // Save todos to localStorage whenever todoItems changes
+  useEffect(() => {
+    // Combine new todos with saved todos
+    const allTodos = [...savedTodos];
+    
+    // Add any new todos from todoItems that aren't already in savedTodos
+    todoItems.forEach(todo => {
+      if (!allTodos.some(savedTodo => savedTodo.id === todo.id)) {
+        allTodos.push(todo);
+      } else {
+        // Update existing todo if its completion status changed
+        const index = allTodos.findIndex(savedTodo => savedTodo.id === todo.id);
+        if (index !== -1) {
+          allTodos[index] = todo;
+        }
+      }
+    });
+    
+    // Save the combined list to localStorage
+    localStorage.setItem('exeai-todos', JSON.stringify(allTodos));
+    setSavedTodos(allTodos);
+  }, [todoItems]);
+  
+  // Handle completing a todo
+  const handleCompleteTodo = (noteId: string, completed: boolean) => {
+    onCompleteTodo(noteId, completed);
+    
+    // Also update the saved todos
+    const updatedSavedTodos = savedTodos.map(todo => 
+      todo.id === noteId ? { ...todo, completed } : todo
+    );
+    localStorage.setItem('exeai-todos', JSON.stringify(updatedSavedTodos));
+    setSavedTodos(updatedSavedTodos);
+  };
+  
+  // Handle adding a new todo
+  const handleAddTodo = () => {
+    if (newTodoText.trim() === '') return;
+    
+    // Create a new todo
+    const newTodo: Note = {
+      id: `todo-${Date.now()}`,
+      content: newTodoText,
+      type: 'todo',
+      completed: false,
+      createdAt: new Date(),
+      pageId: 'local-page', // Default page ID for todos added directly
+      linkedPages: [],
+      children: [],
+      parentId: null,
+      indent: 0
+    };
+    
+    // Add to saved todos
+    const updatedSavedTodos = [...savedTodos, newTodo];
+    localStorage.setItem('exeai-todos', JSON.stringify(updatedSavedTodos));
+    setSavedTodos(updatedSavedTodos);
+    
+    // Call parent component's onAddTodo if provided
+    if (onAddTodo) {
+      onAddTodo(newTodoText);
+    }
+    
+    // Clear the input and hide the add todo form
+    setNewTodoText('');
+    setShowAddTodo(false);
+  };
+  
+  // Combine todoItems and savedTodos for display
+  const combinedTodos = [...todoItems];
+  
+  // Add saved todos that aren't in todoItems
+  savedTodos.forEach(savedTodo => {
+    if (!combinedTodos.some(todo => todo.id === savedTodo.id)) {
+      combinedTodos.push(savedTodo);
+    }
+  });
   
   // Filter todos based on selected filter
-  const filteredTodos = todoItems.filter(note => {
+  const filteredTodos = combinedTodos.filter(note => {
     if (filter === 'all') return true;
     if (filter === 'active') return !note.completed;
     if (filter === 'completed') return note.completed;
@@ -46,31 +146,123 @@ export default function TodoList({
   });
   
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', maxWidth: '160px' }}>
-      {/* Ultra-Compact Header */}
+    <div style={{ backgroundColor: '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: '10px', padding: '16px' }}>
       <div style={{ 
-        marginBottom: '10px',
+        marginBottom: '16px',
         display: 'flex',
-        flexDirection: 'column',
-        gap: '6px'
+        justifyContent: 'space-between',
+        alignItems: 'center'
       }}>
         <h2 style={{ 
-          fontSize: '16px', 
+          fontSize: '20px', 
           fontWeight: '700', 
           color: '#1F2937', 
           margin: 0,
           display: 'flex',
           alignItems: 'center',
-          gap: '4px',
-          whiteSpace: 'nowrap'
+          gap: '6px'
         }}>
           <span style={{ color: '#F4B000' }}>✓</span> To-Do List
         </h2>
         
-        {/* Filter tabs in even more compact layout */}
+        {/* Add todo button */}
+        <button
+          onClick={() => setShowAddTodo(true)}
+          style={{
+            backgroundColor: 'transparent',
+            color: '#3B82F6',
+            border: 'none',
+            fontSize: '20px',
+            fontWeight: '700',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '28px',
+            height: '28px',
+            borderRadius: '6px'
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#EFF6FF'}
+          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+        >
+          +
+        </button>
+      </div>
+      
+      {/* Add todo form */}
+      {showAddTodo && (
+        <div style={{ marginBottom: '16px' }}>
+          <div style={{ position: 'relative' }}>
+            <input
+              type="text"
+              value={newTodoText}
+              onChange={(e) => setNewTodoText(e.target.value)}
+              placeholder="What do you need to do?"
+              autoFocus
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                paddingRight: '40px',
+                borderRadius: '8px',
+                border: '1px solid #E5E7EB',
+                fontSize: '14px',
+                outline: 'none'
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleAddTodo();
+                } else if (e.key === 'Escape') {
+                  setShowAddTodo(false);
+                }
+              }}
+            />
+            <button
+              onClick={handleAddTodo}
+              style={{
+                position: 'absolute',
+                right: '8px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                backgroundColor: '#3B82F6',
+                color: 'white',
+                border: 'none',
+                width: '24px',
+                height: '24px',
+                borderRadius: '6px',
+                fontSize: '16px',
+                fontWeight: '700',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer'
+              }}
+            >
+              +
+            </button>
+          </div>
+          <div style={{ 
+            fontSize: '12px', 
+            color: '#6B7280', 
+            marginTop: '6px',
+            display: 'flex',
+            gap: '16px'
+          }}>
+            <span>Press Enter to add</span>
+            <span>Esc to cancel</span>
+          </div>
+        </div>
+      )}
+      
+      {/* Filter tabs */}
+      <div style={{ 
+        marginBottom: '16px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '8px'
+      }}>
         <div style={{ 
           display: 'flex', 
-          borderRadius: '6px', 
+          borderRadius: '8px', 
           overflow: 'hidden',
           border: '1px solid #E5E7EB',
           boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
@@ -80,8 +272,8 @@ export default function TodoList({
             onClick={() => setFilter('all')}
             style={{
               flex: 1,
-              padding: '3px 0',
-              fontSize: '10px',
+              padding: '6px 0',
+              fontSize: '13px',
               fontWeight: '600',
               backgroundColor: filter === 'all' ? '#EFF6FF' : 'white',
               color: filter === 'all' ? '#3B82F6' : '#6B7280',
@@ -96,8 +288,8 @@ export default function TodoList({
             onClick={() => setFilter('active')}
             style={{
               flex: 1,
-              padding: '3px 0',
-              fontSize: '10px',
+              padding: '6px 0',
+              fontSize: '13px',
               fontWeight: '600',
               backgroundColor: filter === 'active' ? '#EFF6FF' : 'white',
               color: filter === 'active' ? '#3B82F6' : '#6B7280',
@@ -106,14 +298,14 @@ export default function TodoList({
               cursor: 'pointer'
             }}
           >
-            Act
+            Active
           </button>
           <button
             onClick={() => setFilter('completed')}
             style={{
               flex: 1,
-              padding: '3px 0',
-              fontSize: '10px',
+              padding: '6px 0',
+              fontSize: '13px',
               fontWeight: '600',
               backgroundColor: filter === 'completed' ? '#EFF6FF' : 'white',
               color: filter === 'completed' ? '#3B82F6' : '#6B7280',
@@ -125,25 +317,25 @@ export default function TodoList({
           </button>
         </div>
         
-        {/* Sort dropdown - ultra compact */}
+        {/* Sort dropdown */}
         <select
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value as 'date' | 'priority')}
           style={{
-            padding: '3px 6px',
+            padding: '6px 10px',
             borderRadius: '6px',
             border: '1px solid #E5E7EB',
             backgroundColor: 'white',
-            fontSize: '10px',
+            fontSize: '13px',
             fontWeight: '500',
             color: '#4B5563',
             cursor: 'pointer',
             appearance: 'none',
             backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%236B7280\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'%3E%3C/path%3E%3C/svg%3E")',
             backgroundRepeat: 'no-repeat',
-            backgroundPosition: 'right 6px center',
-            backgroundSize: '10px',
-            paddingRight: '20px',
+            backgroundPosition: 'right 8px center',
+            backgroundSize: '14px',
+            paddingRight: '28px',
             width: '100%'
           }}
         >
@@ -152,22 +344,28 @@ export default function TodoList({
         </select>
       </div>
       
-      {/* Todo list - ultra compact */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', overflow: 'auto', flex: 1 }}>
+      {/* Todo list */}
+      <div style={{ 
+        display: 'flex', 
+        flexDirection: 'column', 
+        gap: '8px', 
+        maxHeight: '300px', 
+        overflowY: 'auto',
+        paddingRight: '4px'
+      }}>
         {sortedTodos.length === 0 ? (
           <div style={{ 
-            padding: '16px 8px', 
+            padding: '24px 16px', 
             textAlign: 'center', 
             color: '#9CA3AF',
-            backgroundColor: 'rgba(255, 255, 255, 0.7)',
-            borderRadius: '8px',
+            backgroundColor: 'white',
+            borderRadius: '10px',
             border: '1px dashed #E5E7EB',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
           }}>
-            <div style={{ fontSize: '16px', marginBottom: '4px' }}>✓</div>
-            <div style={{ fontSize: '12px', fontWeight: '500' }}>Tasks will appear here...</div>
-            <div style={{ fontSize: '10px', marginTop: '4px' }}>
-              Use /todo to add tasks
+            <div style={{ fontSize: '20px', marginBottom: '6px' }}>✓</div>
+            <div style={{ fontSize: '14px', fontWeight: '500' }}>Tasks will appear here...</div>
+            <div style={{ fontSize: '12px', marginTop: '4px' }}>
+              Use /todo to add new tasks
             </div>
           </div>
         ) : (
@@ -182,27 +380,25 @@ export default function TodoList({
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '6px',
-                  padding: '6px 8px',
+                  gap: '10px',
+                  padding: '12px',
                   backgroundColor: 'white',
-                  borderRadius: '6px',
+                  borderRadius: '8px',
                   border: '1px solid rgba(229, 231, 235, 0.8)',
                   transition: 'all 0.2s',
                   boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-                  backdropFilter: 'blur(5px)',
-                  width: '100%'
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.08)'}
+                onMouseEnter={(e) => e.currentTarget.style.boxShadow = '0 2px 5px rgba(0,0,0,0.08)'}
                 onMouseLeave={(e) => e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.05)'}
               >
-                {/* Checkbox - smaller */}
+                {/* Checkbox */}
                 <div
-                  onClick={() => onCompleteTodo(todo.id, !todo.completed)}
+                  onClick={() => handleCompleteTodo(todo.id, !todo.completed)}
                   style={{
-                    width: '14px',
-                    height: '14px',
-                    borderRadius: '3px',
-                    border: todo.completed ? 'none' : '1px solid #D1D5DB',
+                    width: '18px',
+                    height: '18px',
+                    borderRadius: '5px',
+                    border: todo.completed ? 'none' : '2px solid #D1D5DB',
                     backgroundColor: todo.completed ? '#10B981' : 'transparent',
                     display: 'flex',
                     alignItems: 'center',
@@ -212,16 +408,16 @@ export default function TodoList({
                   }}
                 >
                   {todo.completed && (
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <path d="M5 12L10 17L19 8" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
                   )}
                 </div>
                 
-                {/* Content - more compact */}
+                {/* Content */}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ 
-                    fontSize: '11px',
+                    fontSize: '14px',
                     color: todo.completed ? '#9CA3AF' : '#1F2937',
                     textDecoration: todo.completed ? 'line-through' : 'none',
                     fontWeight: '500',
@@ -233,12 +429,12 @@ export default function TodoList({
                   </div>
                   
                   <div style={{ 
-                    fontSize: '9px',
+                    fontSize: '12px',
                     color: '#6B7280',
                     marginTop: '2px',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '4px'
+                    gap: '6px'
                   }}>
                     <span>
                       {new Date(todo.createdAt).toLocaleDateString('en-US', { 
@@ -249,42 +445,18 @@ export default function TodoList({
                     
                     {isPriority && (
                       <span style={{
-                        padding: '1px 3px',
+                        padding: '1px 4px',
                         backgroundColor: '#FEF2F2',
                         color: '#EF4444',
-                        borderRadius: '2px',
-                        fontSize: '8px',
+                        borderRadius: '3px',
+                        fontSize: '10px',
                         fontWeight: '600'
                       }}>
-                        !
+                        Priority
                       </span>
                     )}
                   </div>
                 </div>
-                
-                {/* Delete button - smaller */}
-                <button
-                  onClick={() => onDeleteTodo(todo.id)}
-                  style={{
-                    width: '18px',
-                    height: '18px',
-                    borderRadius: '3px',
-                    border: 'none',
-                    backgroundColor: 'transparent',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                    opacity: 0.5,
-                    transition: 'opacity 0.2s',
-                    color: '#6B7280',
-                    flexShrink: 0
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-                  onMouseLeave={(e) => e.currentTarget.style.opacity = '0.5'}
-                >
-                  <span style={{ fontSize: '14px' }}>×</span>
-                </button>
               </div>
             );
           })

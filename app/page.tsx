@@ -1,167 +1,231 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import CenterPanel from '../components/dashboard/CenterPanel';
 import LeftSidebar from '../components/dashboard/LeftSidebarComponent';
 import RightSidebar from '../components/dashboard/RightSidebar';
+import TopBar from '../components/dashboard/TopBar';
 import { Page, Note, CalendarEvent } from '../app/types';
 
 export default function Dashboard() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const [currentPage, setCurrentPage] = useState<Page | null>(null);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
-  
-  // Add state for calendar events
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
+  const [loading, setLoading] = useState(true);
   
-  // Load saved events on initial render
+  // Redirect to sign-in if not authenticated
   useEffect(() => {
-    // In a real app, you would load from localStorage or an API
-    // For now, we'll just set some demo events
-    const demoEvents: CalendarEvent[] = [
-      {
-        id: '1',
-        title: 'Team Meeting',
-        start: new Date(2025, 10, 13, 10, 0), // Nov 13, 2025, 10:00 AM
-        end: new Date(2025, 10, 13, 11, 0),   // Nov 13, 2025, 11:00 AM
-        type: 'meeting',
-        description: 'Weekly team sync',
-        location: 'Conference Room A'
+    if (status === 'unauthenticated') {
+      router.push('/auth/signin');
+    } else if (status === 'authenticated') {
+      setLoading(false);
+      loadUserData();
+    }
+  }, [status, router]);
+  
+  // Load user's data from database
+  const loadUserData = async () => {
+    try {
+      // Load calendar events from API
+      const eventsResponse = await fetch('/api/calendar-events');
+      if (eventsResponse.ok) {
+        const eventsData = await eventsResponse.json();
+        setCalendarEvents(eventsData.map((event: any) => ({
+          ...event,
+          start: new Date(event.start),
+          end: new Date(event.end)
+        })));
       }
-    ];
-    setCalendarEvents(demoEvents);
-  }, []);
-  
-  // Function to add a new calendar event
-  const addCalendarEvent = (event: Omit<CalendarEvent, 'id'>) => {
-    const newEvent: CalendarEvent = {
-      ...event,
-      id: Date.now().toString() // Generate a unique ID
-    };
-    
-    setCalendarEvents(prev => [...prev, newEvent]);
-    displayToast(`${event.title} added to calendar`);
-  };
-  
-  // Function to update an existing calendar event
-  const updateCalendarEvent = (updatedEvent: CalendarEvent) => {
-    setCalendarEvents(prev => 
-      prev.map(event => event.id === updatedEvent.id ? updatedEvent : event)
-    );
-    displayToast(`${updatedEvent.title} updated`);
-  };
-  
-  // Function to delete a calendar event
-  const deleteCalendarEvent = (eventId: string) => {
-    const eventToDelete = calendarEvents.find(e => e.id === eventId);
-    setCalendarEvents(prev => prev.filter(event => event.id !== eventId));
-    if (eventToDelete) {
-      displayToast(`${eventToDelete.title} removed from calendar`);
+      
+      // Load today's notes from API
+      const today = new Date().toISOString().split('T')[0];
+      const notesResponse = await fetch(`/api/notes?date=${today}`);
+      if (notesResponse.ok) {
+        const noteData = await notesResponse.json();
+        if (noteData) {
+          setCurrentPage(noteData);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load user data:', error);
     }
   };
   
-  // Extract events from notes
+  // Function to add a new calendar event
+  const addCalendarEvent = async (event: Omit<CalendarEvent, 'id'>) => {
+    try {
+      const response = await fetch('/api/calendar-events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(event)
+      });
+      
+      if (response.ok) {
+        const newEvent = await response.json();
+        setCalendarEvents(prev => [...prev, {
+          ...newEvent,
+          start: new Date(newEvent.start),
+          end: new Date(newEvent.end)
+        }]);
+        displayToast(`${event.title} added to calendar`);
+      }
+    } catch (error) {
+      console.error('Failed to add calendar event:', error);
+      displayToast('Failed to add event');
+    }
+  };
+  
+  // Function to update an existing calendar event
+  const updateCalendarEvent = async (updatedEvent: CalendarEvent) => {
+    try {
+      const response = await fetch(`/api/calendar-events/${updatedEvent.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedEvent)
+      });
+      
+      if (response.ok) {
+        setCalendarEvents(prev => 
+          prev.map(event => event.id === updatedEvent.id ? updatedEvent : event)
+        );
+        displayToast(`${updatedEvent.title} updated`);
+      }
+    } catch (error) {
+      console.error('Failed to update calendar event:', error);
+      displayToast('Failed to update event');
+    }
+  };
+  
+  // Function to delete a calendar event
+  const deleteCalendarEvent = async (eventId: string) => {
+    try {
+      const eventToDelete = calendarEvents.find(e => e.id === eventId);
+      const response = await fetch(`/api/calendar-events/${eventId}`, {
+        method: 'DELETE'
+      });
+      
+      if (response.ok) {
+        setCalendarEvents(prev => prev.filter(event => event.id !== eventId));
+        if (eventToDelete) {
+          displayToast(`${eventToDelete.title} removed from calendar`);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to delete calendar event:', error);
+      displayToast('Failed to delete event');
+    }
+  };
+  
+  // Extract events from notes (existing logic)
   useEffect(() => {
     if (!currentPage) return;
     
-    // Find notes that are events, meetings, or other calendar-related types
     const eventNotes = currentPage.notes.filter(note => 
       note.type === 'event' || note.type === 'meeting' || 
       note.type === 'travel' || note.type === 'birthday'
     );
     
-    // Convert relevant notes to calendar events if they're not already in the calendar
     eventNotes.forEach(note => {
-      // Skip if this note is already represented as a calendar event
       if (calendarEvents.some(event => event.sourceNoteId === note.id)) {
         return;
       }
       
-      // Try to extract date/time information from the note content
-      // This is a simplified example - in a real app, you'd use a more robust date parsing
       const dateMatch = note.content.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
       const timeMatch = note.content.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
       
       if (dateMatch) {
-        const month = parseInt(dateMatch[1]) - 1; // JS months are 0-indexed
+        const month = parseInt(dateMatch[1]) - 1;
         const day = parseInt(dateMatch[2]);
         let year = parseInt(dateMatch[3]);
-        if (year < 100) year += 2000; // Convert 2-digit years
+        if (year < 100) year += 2000;
         
-        const today = new Date();
         const eventDate = new Date(year, month, day);
-        
-        // Set time if it was found, otherwise default to 9 AM
         let hours = 9;
         let minutes = 0;
         
         if (timeMatch) {
           hours = parseInt(timeMatch[1]);
           minutes = parseInt(timeMatch[2]);
-          
-          // Handle AM/PM
           if (timeMatch[3] && timeMatch[3].toLowerCase() === 'pm' && hours < 12) {
             hours += 12;
           }
         }
         
         eventDate.setHours(hours, minutes);
-        
-        // Create an end time 1 hour later
         const endDate = new Date(eventDate);
         endDate.setHours(endDate.getHours() + 1);
         
-        // Create the new calendar event
-        const newEvent: CalendarEvent = {
-          id: `note-${note.id}`,
+        addCalendarEvent({
           title: note.content,
           start: eventDate,
           end: endDate,
           type: note.type as 'travel' | 'meeting' | 'event' | 'birthday' | 'reminder',
           description: note.content,
           sourceNoteId: note.id
-        };
-        
-        // Add to calendar events
-        setCalendarEvents(prev => [...prev, newEvent]);
+        });
       }
     });
-  }, [currentPage, calendarEvents]);
+  }, [currentPage]);
   
-  const handleCompleteTodo = (noteId: string, completed: boolean) => {
+  const handleCompleteTodo = async (noteId: string, completed: boolean) => {
     if (!currentPage) return;
     
-    const allNotes = [...currentPage.notes];
-    const updatedNotes = allNotes.map(note => 
-      note.id === noteId 
-        ? { ...note, completed }
-        : note
-    );
-    
-    setCurrentPage({
-      ...currentPage,
-      notes: updatedNotes,
-      lastModified: new Date()
-    });
-    
-    if (completed) {
-      displayToast("Task completed!");
+    try {
+      const response = await fetch(`/api/notes/${noteId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ completed })
+      });
+      
+      if (response.ok) {
+        const allNotes = [...currentPage.notes];
+        const updatedNotes = allNotes.map(note => 
+          note.id === noteId ? { ...note, completed } : note
+        );
+        
+        setCurrentPage({
+          ...currentPage,
+          notes: updatedNotes,
+          lastModified: new Date()
+        });
+        
+        if (completed) {
+          displayToast("Task completed!");
+        }
+      }
+    } catch (error) {
+      console.error('Failed to update todo:', error);
     }
   };
 
-  const handleDeleteTodo = (noteId: string) => {
+  const handleDeleteTodo = async (noteId: string) => {
     if (!currentPage) return;
     
-    const allNotes = [...currentPage.notes];
-    const filteredNotes = allNotes.filter(note => note.id !== noteId);
-    
-    setCurrentPage({
-      ...currentPage,
-      notes: filteredNotes,
-      lastModified: new Date()
-    });
-    
-    displayToast("Task deleted");
+    try {
+      const response = await fetch(`/api/notes/${noteId}`, {
+        method: 'DELETE'
+      });
+      
+      if (response.ok) {
+        const allNotes = [...currentPage.notes];
+        const filteredNotes = allNotes.filter(note => note.id !== noteId);
+        
+        setCurrentPage({
+          ...currentPage,
+          notes: filteredNotes,
+          lastModified: new Date()
+        });
+        
+        displayToast("Task deleted");
+      }
+    } catch (error) {
+      console.error('Failed to delete todo:', error);
+    }
   };
   
   const displayToast = (message: string) => {
@@ -170,35 +234,56 @@ export default function Dashboard() {
     setTimeout(() => setShowSuccessToast(false), 3000);
   };
   
-  // Get todo items for the current page
   const todoItems = currentPage?.notes.filter(note => note.type === 'todo') || [];
 
+  // Show loading state
+  if (loading || status === 'loading') {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="text-4xl mb-4">⏳</div>
+          <p className="text-gray-600">Loading your workspace...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex h-screen" style={{ 
+    <div className="flex flex-col h-screen" style={{ 
       background: 'linear-gradient(135deg, #f5f7ff 0%, #e9ecff 25%, #e5e8ff 50%, #dbe3ff 75%, #d8e0ff 100%)'
     }}>
-      <div className="frosted-panel" style={{ width: '160px' }}>
-        <LeftSidebar 
-          calendarEvents={calendarEvents} 
-          onAddEvent={addCalendarEvent}
-          onUpdateEvent={updateCalendarEvent}
-          onDeleteEvent={deleteCalendarEvent}
-        />
-      </div>
-      <div className="flex-1 flex">
-        <div className="flex-1 border-r border-gray-200 frosted-panel">
-          <CenterPanel 
-            currentPage={currentPage}
-            setCurrentPage={setCurrentPage}
-            onAddCalendarEvent={addCalendarEvent}
+      {/* Top Bar */}
+      <TopBar 
+        username={session?.user?.name || 'User'}
+        email={session?.user?.email || ''}
+        profileImage={session?.user?.image || undefined}
+      />
+      
+      {/* Main Dashboard */}
+      <div className="flex flex-1 overflow-hidden">
+        <div className="frosted-panel" style={{ width: '160px' }}>
+          <LeftSidebar 
+            calendarEvents={calendarEvents} 
+            onAddEvent={addCalendarEvent}
+            onUpdateEvent={updateCalendarEvent}
+            onDeleteEvent={deleteCalendarEvent}
           />
         </div>
-        <div className="frosted-panel" style={{ width: '160px' }}>
-          <RightSidebar 
-            todoItems={todoItems}
-            onCompleteTodo={handleCompleteTodo}
-            onDeleteTodo={handleDeleteTodo}
-          />
+        <div className="flex-1 flex">
+          <div className="flex-1 border-r border-gray-200 frosted-panel">
+            <CenterPanel 
+              currentPage={currentPage}
+              setCurrentPage={setCurrentPage}
+              onAddCalendarEvent={addCalendarEvent}
+            />
+          </div>
+          <div className="frosted-panel" style={{ width: '160px' }}>
+            <RightSidebar 
+              todoItems={todoItems}
+              onCompleteTodo={handleCompleteTodo}
+              onDeleteTodo={handleDeleteTodo}
+            />
+          </div>
         </div>
       </div>
       

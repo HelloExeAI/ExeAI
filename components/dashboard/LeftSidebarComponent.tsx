@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import Clock from './Clock';
 import Calendar from './Calendar';
 import { CalendarEvent } from '../../app/types';
 
@@ -29,13 +28,12 @@ export default function LeftSidebarComponent({
       height: '100%', 
       overflowY: 'auto', 
       backgroundColor: '#FAFAFA', 
-      padding: '8px',
-      width: '160px', // Further reduced from 210px to 160px (about 25% smaller)
-      flexShrink: 0
+      padding: '8px'
+      // Width is controlled by the parent grid layout
     }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         
-        {/* Logo Card - Even smaller */}
+        {/* Logo Card - Compact */}
         <div style={{ 
           backgroundColor: '#FFFFFF', 
           border: '1px solid #E5E7EB', 
@@ -48,10 +46,8 @@ export default function LeftSidebarComponent({
           </div>
         </div>
 
-        {/* Weather Clock Widget - Will need to be adjusted in the Clock component for this size */}
-        <Clock />
-
-        {/* Calendar - Calendar component should also be adjusted for this width */}
+       
+        {/* Calendar */}
         <Calendar 
           events={calendarEvents} 
           onAddEvent={onAddEvent}
@@ -59,7 +55,7 @@ export default function LeftSidebarComponent({
           onDeleteEvent={onDeleteEvent}
         />
        
-        {/* Quick Actions Card - Further reduced */}
+        {/* Quick Actions Card */}
         <div style={{ backgroundColor: '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: '10px', padding: '10px' }}>
           <div style={{ fontSize: '9px', fontWeight: '600', color: '#6B7280', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             ACTIONS

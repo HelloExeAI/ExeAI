@@ -4,7 +4,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { getAICallSuggestions } from '@/app/dashboard/utils/aiHelpers';
 import { getFilteredPages } from '@/app/dashboard/utils/searchUtils';
 import { getTodayPageTitle } from '@/app/dashboard/utils/noteHelpers';
-import { Note, Page, CommandOption, COMMAND_OPTIONS, CalendarEvent } from '@/app/dashboard/types/index';
+import { Note, Page, CommandOption, COMMAND_OPTIONS } from '@/app/dashboard/types/index';
+import { CalendarEvent } from '@/app/types';
+import AnalysisModeToggle from '@/components/workspace/AnalysisModeToggle';
+import { formatDateAPI, formatDateLong, getPreviousDay, getNextDay, getToday, isToday } from '@/lib/helpers/dateHelpers';
+import { debounce } from '@/lib/helpers/editorHelpers';
 
 interface CenterPanelProps {
   currentPage: Page | null;
@@ -26,10 +30,15 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
   const [toastMessage, setToastMessage] = useState('');
   const editRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   
-  // Add new state variables for search
+  // Search state
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // NEW: Milestone 1 - Date navigation and analysis mode
+  const [currentDate, setCurrentDate] = useState(getToday());
+  const [analysisMode, setAnalysisMode] = useState<'manual' | 'automatic'>('manual');
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
 
   const getOrCreatePage = (title: string): Page => {
     let page = allPages.find(p => p.title === title);
@@ -48,29 +57,93 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
     return page;
   };
 
+  // Load page based on current date
   useEffect(() => {
-    const todayPageTitle = getTodayPageTitle();
-    const todayPage = getOrCreatePage(todayPageTitle);
+    const dateTitle = formatDateLong(currentDate);
+    const datePage = getOrCreatePage(dateTitle);
     
-    if (todayPage.notes.length === 0) {
+    if (datePage.notes.length === 0) {
       const firstNote: Note = {
         id: Date.now().toString(),
         content: '',
         type: 'note',
         createdAt: new Date(),
-        pageId: todayPage.id,
+        pageId: datePage.id,
         linkedPages: [],
         children: [],
         parentId: null,
         indent: 0,
         completed: false
       };
-      todayPage.notes = [firstNote];
+      datePage.notes = [firstNote];
       setFocusedNoteId(firstNote.id);
     }
     
-    setCurrentPage(todayPage);
-  }, []);
+    setCurrentPage(datePage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentDate]);
+
+  // NEW: Auto-save functionality with debounce
+  const autoSaveToAPI = useRef(
+    debounce(async (pageTitle: string, content: string) => {
+      setSaveStatus('saving');
+      
+      try {
+        const dateStr = formatDateAPI(currentDate);
+        
+        const response = await fetch('/api/daily-note', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            date: dateStr,
+            content: content,
+          }),
+        });
+
+        if (response.ok) {
+          setSaveStatus('saved');
+        } else {
+          setSaveStatus('unsaved');
+          console.error('Failed to save note');
+        }
+      } catch (error) {
+        setSaveStatus('unsaved');
+        console.error('Error saving note:', error);
+      }
+    }, 1500)
+  ).current;
+
+  // Trigger auto-save when page content changes
+  useEffect(() => {
+    if (currentPage && currentPage.notes.length > 0) {
+      const contentStr = currentPage.notes
+        .map(note => '  '.repeat(note.indent) + note.content)
+        .join('\n');
+      
+      setSaveStatus('unsaved');
+      autoSaveToAPI(currentPage.title, contentStr);
+    }
+  }, [currentPage, autoSaveToAPI]);
+
+  // NEW: Date navigation handlers
+  const handlePreviousDay = () => {
+    setCurrentDate(getPreviousDay(currentDate));
+  };
+
+  const handleNextDay = () => {
+    setCurrentDate(getNextDay(currentDate));
+  };
+
+  const handleToday = () => {
+    setCurrentDate(getToday());
+  };
+
+  const handleAnalysisModeChange = (mode: 'manual' | 'automatic') => {
+    setAnalysisMode(mode);
+    console.log('Analysis mode changed to:', mode);
+  };
 
   const extractLinkedPages = (text: string): string[] => {
     const regex = /\[\[(.*?)\]\]/g;
@@ -112,12 +185,10 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
   const handleSearchToggle = () => {
     setShowSearch(!showSearch);
     if (!showSearch) {
-      // Focus the search input when opening
       setTimeout(() => {
         searchInputRef.current?.focus();
       }, 100);
     } else {
-      // Clear search when closing
       setSearchQuery('');
     }
   };
@@ -130,7 +201,6 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
     const range = selection?.getRangeAt(0);
     const rect = range?.getBoundingClientRect();
 
-    // Detect [[ for page linking
     if (content.endsWith('[[')) {
       setShowPageSearch(true);
       setShowCommandMenu(false);
@@ -148,7 +218,6 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
       }
     }
 
-    // Detect / for commands
     const lastChar = content.slice(-1);
     const secondLastChar = content.slice(-2, -1);
     if (lastChar === '/' && (content.length === 1 || secondLastChar === ' ' || secondLastChar === '\n')) {
@@ -170,20 +239,17 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
 
     updateNoteContent(noteId, content);
     
-    // AI Call Suggestions - analyze the content after updating
-    // Only show suggestions when the user stops typing for a moment
     const noteType = currentPage?.notes.find(n => n.id === noteId)?.type;
     if (noteType === 'call' && content.trim().length > 0) {
       const debounceTimeout = setTimeout(() => {
         const aiSuggestions = getAICallSuggestions(content);
         
-        // If there's no agenda, show a suggestion toast
         if (!aiSuggestions.hasAgenda && aiSuggestions.suggestedAgenda) {
           setToastMessage(`💡 Suggestion: Add purpose - "${aiSuggestions.suggestedAgenda}"`);
           setShowToast(true);
-          setTimeout(() => setShowToast(false), 6000); // Show longer for AI suggestions
+          setTimeout(() => setShowToast(false), 6000);
         }
-      }, 1500); // Debounce for 1.5 seconds
+      }, 1500);
       
       return () => clearTimeout(debounceTimeout);
     }
@@ -192,7 +258,6 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>, note: Note) => {
     const content = e.currentTarget.textContent || '';
     
-    // Enter - Create new bullet at same level
     if (e.key === 'Enter' && !e.shiftKey && !showPageSearch && !showCommandMenu) {
       e.preventDefault();
       const selection = window.getSelection();
@@ -205,27 +270,23 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
       createNewBulletWithContent(note, 'after', remainingContent);
     }
 
-    // Tab - Indent (make child)
     if (e.key === 'Tab' && !e.shiftKey) {
       e.preventDefault();
       e.stopPropagation();
       indentBullet(note);
     }
 
-    // Shift+Tab - Outdent (move up level)
     if (e.key === 'Tab' && e.shiftKey) {
       e.preventDefault();
       e.stopPropagation();
       outdentBullet(note);
     }
 
-    // Backspace on empty bullet - delete it
     if (e.key === 'Backspace' && content === '') {
       e.preventDefault();
       deleteBullet(note);
     }
 
-    // Escape - Close menus
     if (e.key === 'Escape') {
       setShowPageSearch(false);
       setShowCommandMenu(false);
@@ -245,7 +306,7 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
       children: [],
       parentId: position === 'child' ? currentNote.id : currentNote.parentId,
       indent: position === 'child' ? currentNote.indent + 1 : currentNote.indent,
-      completed: false // Add default completed status
+      completed: false
     };
 
     const allNotes = flattenNotes(currentPage.notes);
@@ -370,7 +431,6 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
           ...note, 
           content, 
           linkedPages,
-          // Preserve the completed status if it exists
           completed: note.completed !== undefined ? note.completed : false
         };
       }
@@ -444,7 +504,6 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
             ...note, 
             type: command.command as Note['type'], 
             content: newContent,
-            // Add completed property for todo items
             ...(command.command === 'todo' ? { completed: false } : {})
           }
         : note
@@ -454,20 +513,17 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
     setShowCommandMenu(false);
     setCommandSearchQuery('');
     
-    // Handle event-related commands by creating calendar events
     if (['event', 'meeting', 'travel', 'birthday'].includes(command.command) && onAddCalendarEvent) {
-      // Try to extract date information from the content
       const today = new Date();
       let eventDate = new Date(today);
-      let eventTime = 9; // Default to 9 AM
-      let endTime = 10; // Default to 1 hour duration
+      let eventTime = 9;
+      let endTime = 10;
       
-      // Simple date extraction logic - could be more sophisticated
       const dateMatch = newContent.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
       const timeMatch = newContent.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
       
       if (dateMatch) {
-        const month = parseInt(dateMatch[1]) - 1; // JS months are 0-indexed
+        const month = parseInt(dateMatch[1]) - 1;
         const day = parseInt(dateMatch[2]);
         let year = parseInt(dateMatch[3]);
         if (year < 100) year += 2000;
@@ -479,7 +535,6 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
         eventTime = parseInt(timeMatch[1]);
         const minutes = parseInt(timeMatch[2]);
         
-        // Handle AM/PM
         if (timeMatch[3] && timeMatch[3].toLowerCase() === 'pm' && eventTime < 12) {
           eventTime += 12;
         }
@@ -494,7 +549,6 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
       const endDate = new Date(eventDate);
       endDate.setHours(endTime);
       
-      // Create calendar event
       onAddCalendarEvent({
         title: newContent,
         start: eventDate,
@@ -506,7 +560,6 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
     }
     
     if (command.command === 'call') {
-      // For call command, immediately prompt for details if content is empty
       if (newContent === '') {
         setTimeout(() => {
           const div = editRefs.current[noteId];
@@ -514,7 +567,6 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
             div.textContent = 'Call ';
             div.focus();
             
-            // Place cursor at end
             const range = document.createRange();
             const sel = window.getSelection();
             const textNode = div.firstChild;
@@ -525,14 +577,12 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
               sel?.addRange(range);
             }
             
-            // Show a helper toast
             setToastMessage('📞 Add who to call and the purpose of the call');
             setShowToast(true);
             setTimeout(() => setShowToast(false), 4000);
           }
         }, 10);
       } else {
-        // If content exists, analyze it for call details
         const aiSuggestions = getAICallSuggestions(newContent);
         if (!aiSuggestions.hasAgenda && aiSuggestions.suggestedAgenda) {
           setToastMessage(`💡 Suggestion: Add purpose - "${aiSuggestions.suggestedAgenda}"`);
@@ -590,7 +640,6 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
     const tree = buildNoteTree(notes);
     
     return tree.map((note) => {
-      // Check for AI suggestions for calls
       const aiSuggestions = note.type === 'call' ? getAICallSuggestions(note.content) : null;
       
       return (
@@ -652,7 +701,6 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
               }}
             />
             
-            {/* Priority indicator for calls */}
             {note.type === 'call' && aiSuggestions && (
               <div style={{ 
                 display: 'flex', 
@@ -676,7 +724,6 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
             )}
           </div>
           
-          {/* AI suggestions for calls */}
           {note.type === 'call' && aiSuggestions && !aiSuggestions.hasAgenda && aiSuggestions.suggestedAgenda && focusedNoteId === note.id && (
             <div style={{
               marginLeft: '24px',
@@ -738,7 +785,6 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
     b.lastModified.getTime() - a.lastModified.getTime()
   );
 
-  // Use the search function from searchUtils
   const searchResults = getFilteredPages(allPages, searchQuery);
 
   return (
@@ -749,236 +795,167 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
         flexDirection: 'column',
         backgroundColor: '#FFFFFF'
       }}>
-        {/* Header */}
-        <div style={{ 
-          padding: '24px 32px',
+        {/* NEW: Date Navigation Bar */}
+        <div style={{
+          padding: '20px 32px',
           borderBottom: '1px solid #E5E7EB',
+          backgroundColor: 'white',
           flexShrink: 0
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '4px' }}>
-                <span style={{ fontSize: '28px' }}>📝</span>
-                <h1 style={{ 
-                  fontSize: '28px', 
-                  fontWeight: '600', 
-                  color: '#1F2937', 
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ fontSize: '48px', lineHeight: 1 }}>📅</div>
+              <div>
+                <h2 style={{
                   margin: 0,
-                  letterSpacing: '-0.02em'
+                  fontSize: '28px',
+                  fontWeight: '700',
+                  color: '#1F2937',
+                  lineHeight: 1.2
                 }}>
-                  {currentPage?.title || 'Loading...'}
-                </h1>
+                  {formatDateLong(currentDate)}
+                </h2>
+                {isToday(currentDate) && (
+                  <div style={{
+                    display: 'inline-block',
+                    marginTop: '8px',
+                    padding: '4px 12px',
+                    background: '#FEF3C7',
+                    border: '2px solid #F4B000',
+                    borderRadius: '16px',
+                    fontSize: '12px',
+                    fontWeight: '700',
+                    color: '#92400E',
+                    letterSpacing: '0.05em'
+                  }}>
+                    TODAY
+                  </div>
+                )}
               </div>
-              <p style={{ 
-                fontSize: '13px', 
-                color: '#6B7280', 
-                margin: '0',
-                fontWeight: '500'
-              }}>
-                {currentPage?.notes.length || 0} notes • Last modified {currentPage?.lastModified.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
-              </p>
             </div>
 
-            <div style={{ display: 'flex', gap: '8px' }}>
-              {/* Search Button */}
+            {/* Date Navigation Buttons */}
+            <div style={{ display: 'flex', gap: '12px' }}>
               <button
-                onClick={handleSearchToggle}
+                onClick={handlePreviousDay}
                 style={{
-                  padding: '8px 12px',
-                  borderRadius: '8px',
+                  padding: '12px 20px',
+                  borderRadius: '10px',
                   border: '1px solid #E5E7EB',
-                  backgroundColor: showSearch ? '#EFF6FF' : 'white',
-                  color: showSearch ? '#3B82F6' : '#1F2937',
-                  fontSize: '13px',
+                  background: 'white',
+                  color: '#6B7280',
+                  fontSize: '14px',
                   fontWeight: '600',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '6px'
+                  gap: '8px',
+                  outline: 'none'
                 }}
                 onMouseEnter={(e) => {
-                  if (!showSearch) {
-                    e.currentTarget.style.backgroundColor = '#F9FAFB';
-                  }
+                  e.currentTarget.style.background = '#F9FAFB';
+                  e.currentTarget.style.borderColor = '#D1D5DB';
                 }}
                 onMouseLeave={(e) => {
-                  if (!showSearch) {
-                    e.currentTarget.style.backgroundColor = 'white';
-                  }
+                  e.currentTarget.style.background = 'white';
+                  e.currentTarget.style.borderColor = '#E5E7EB';
                 }}
               >
-                <span style={{ fontSize: '14px' }}>🔍</span>
-                {!showSearch ? 'Search' : 'Close Search'}
-              </button>
-              
-              <button
-                onClick={() => {
-                  const todayTitle = getTodayPageTitle();
-                  if (currentPage?.title !== todayTitle) {
-                    switchToPage(todayTitle);
-                  }
-                }}
-                style={{
-                  padding: '8px 16px',
-                  borderRadius: '8px',
-                  border: '1px solid #E5E7EB',
-                  backgroundColor: currentPage?.title === getTodayPageTitle() ? '#EFF6FF' : 'white',
-                  color: currentPage?.title === getTodayPageTitle() ? '#3B82F6' : '#1F2937',
-                  fontSize: '13px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
-                }}
-                onMouseEnter={(e) => {
-                  if (currentPage?.title !== getTodayPageTitle()) {
-                    e.currentTarget.style.backgroundColor = '#F9FAFB';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (currentPage?.title !== getTodayPageTitle()) {
-                    e.currentTarget.style.backgroundColor = 'white';
-                  }
-                }}
-              >
-                📅 Today
+                <span style={{ fontSize: '18px' }}>←</span>
+                <span>Previous</span>
               </button>
 
+              {!isToday(currentDate) && (
+                <button
+                  onClick={handleToday}
+                  style={{
+                    padding: '12px 24px',
+                    borderRadius: '10px',
+                    border: '2px solid #F4B000',
+                    background: '#FEF3C7',
+                    color: '#92400E',
+                    fontSize: '14px',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    outline: 'none'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = '#FDE68A';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = '#FEF3C7';
+                  }}
+                >
+                  Today
+                </button>
+              )}
+
               <button
-                onClick={() => {
-                  setSelectedPageForPopup(null);
-                  setShowPagePopup(true);
-                }}
+                onClick={handleNextDay}
                 style={{
-                  padding: '8px 16px',
-                  borderRadius: '8px',
+                  padding: '12px 20px',
+                  borderRadius: '10px',
                   border: '1px solid #E5E7EB',
-                  backgroundColor: 'white',
-                  color: '#1F2937',
-                  fontSize: '13px',
+                  background: 'white',
+                  color: '#6B7280',
+                  fontSize: '14px',
                   fontWeight: '600',
                   cursor: 'pointer',
-                  transition: 'all 0.2s'
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  outline: 'none'
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F9FAFB'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#F9FAFB';
+                  e.currentTarget.style.borderColor = '#D1D5DB';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'white';
+                  e.currentTarget.style.borderColor = '#E5E7EB';
+                }}
               >
-                🗂️ All Pages ({allPages.length})
+                <span>Next</span>
+                <span style={{ fontSize: '18px' }}>→</span>
               </button>
             </div>
           </div>
 
-          {/* Search Bar */}
-          {showSearch && (
-            <div style={{ 
-              padding: '16px 0', 
-              borderTop: '1px solid #E5E7EB',
-              marginTop: '16px'
+          {/* NEW: AI Analysis & Save Status */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <AnalysisModeToggle
+              mode={analysisMode}
+              onModeChange={handleAnalysisModeChange}
+            />
+            
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 18px',
+              background: 'white',
+              borderRadius: '10px',
+              border: '1px solid #E5E7EB',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
             }}>
-              <div style={{ position: 'relative' }}>
-                <span style={{ 
-                  position: 'absolute', 
-                  left: '12px', 
-                  top: '50%', 
-                  transform: 'translateY(-50%)',
-                  fontSize: '16px',
-                  color: '#6B7280'
-                }}>
-                  🔍
-                </span>
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search across all pages..."
-                  style={{
-                    width: '100%',
-                    padding: '10px 16px 10px 40px',
-                    borderRadius: '10px',
-                    border: '1px solid #E5E7EB',
-                    fontSize: '14px',
-                    backgroundColor: '#F9FAFB',
-                    outline: 'none',
-                    transition: 'all 0.2s'
-                  }}
-                  onFocus={(e) => e.target.style.backgroundColor = 'white'}
-                  onBlur={(e) => e.target.style.backgroundColor = '#F9FAFB'}
-                />
-              </div>
-              
-              {searchQuery.trim() !== '' && (
-                <div style={{ 
-                  marginTop: '12px',
-                  backgroundColor: 'white',
-                  border: '1px solid #E5E7EB',
-                  borderRadius: '10px',
-                  maxHeight: '400px',
-                  overflow: 'auto'
-                }}>
-                  <div style={{ 
-                    padding: '10px 12px',
-                    fontSize: '11px',
-                    fontWeight: '600',
-                    color: '#6B7280',
-                    borderBottom: '1px solid #F3F4F6'
-                  }}>
-                    SEARCH RESULTS ({searchResults.length})
-                  </div>
-                  
-                  {searchResults.length === 0 ? (
-                    <div style={{ 
-                      padding: '20px', 
-                      textAlign: 'center', 
-                      color: '#6B7280',
-                      fontSize: '13px'
-                    }}>
-                      No results found for "{searchQuery}"
-                    </div>
-                  ) : (
-                    searchResults.map(page => (
-                      <div 
-                        key={page.id}
-                        onClick={() => {
-                          switchToPage(page.title);
-                          setShowSearch(false);
-                          setSearchQuery('');
-                        }}
-                        style={{
-                          padding: '14px 16px',
-                          borderBottom: '1px solid #F3F4F6',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F9FAFB'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                      >
-                        <div style={{ 
-                          fontSize: '14px', 
-                          fontWeight: '600',
-                          color: '#1F2937',
-                          marginBottom: '4px'
-                        }}>
-                          📄 {page.title}
-                        </div>
-                        
-                        {page.notes.some(note => 
-                          note.content.toLowerCase().includes(searchQuery.toLowerCase())
-                        ) && (
-                          <div style={{ fontSize: '12px', color: '#6B7280' }}>
-                            {page.notes.filter(note => 
-                              note.content.toLowerCase().includes(searchQuery.toLowerCase())
-                            ).length} matching notes
-                          </div>
-                        )}
-                      </div>
-                    ))
-                  )}
-                </div>
-              )}
+              <span style={{ fontSize: '18px' }}>
+                {saveStatus === 'saving' ? '💾' : saveStatus === 'saved' ? '✓' : '⚠️'}
+              </span>
+              <span style={{
+                fontSize: '14px',
+                fontWeight: '600',
+                color: saveStatus === 'saving' ? '#3B82F6' : saveStatus === 'saved' ? '#10B981' : '#F59E0B'
+              }}>
+                {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? 'All changes saved' : 'Unsaved changes'}
+              </span>
             </div>
-          )}
+          </div>
         </div>
+
+
 
         {/* Main Content Area - Notes */}
         <div style={{ 
@@ -987,7 +964,6 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
           padding: '24px 32px',
           position: 'relative'
         }}>
-          {/* Notes content */}
           {currentPage && renderBulletTree(currentPage.notes)}
 
           {/* Page Search Menu */}

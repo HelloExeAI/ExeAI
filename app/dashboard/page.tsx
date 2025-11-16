@@ -1,70 +1,231 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';  
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import CenterPanel from '@/components/dashboard/CenterPanel';
-import LeftSidebarComponent from '@/components/dashboard/LeftSidebarComponent';
+import LeftSidebar from '@/components/dashboard/LeftSidebarComponent';
 import RightSidebar from '@/components/dashboard/RightSidebar';
-import { Page, Note, CalendarEvent } from '@/app/types';
+import TopBar from '@/components/dashboard/TopBar';
+import { Page, CalendarEvent, Note } from '@/app/types';
 
 export default function Dashboard() {
-  // TODO: Add state for the current page   TODO: Add state for the calendar events
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const [currentPage, setCurrentPage] = useState<Page | null>(null);
-  const [showSuccessToast, setShowSuccessToast] = useState(false);  // TODO: Add state for the success toast
-  const [toastMessage, setToastMessage] = useState('');  // TODO: Add state for the toast message
-  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);  // TODO: Add state for the calendar events
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
+  const [loading, setLoading] = useState(true);
   
-  const handleAddCalendarEvent = (event: Omit<CalendarEvent, 'id'>) => {
-    const newEvent: CalendarEvent = {
-      ...event,
-      id: Date.now().toString()
-    };
-    setCalendarEvents(prev => [...prev, newEvent]);
+  // Redirect to sign-in if not authenticated
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/auth/signin');
+    } else if (status === 'authenticated') {
+      setLoading(false);
+      loadUserData();
+    }
+  }, [status, router]);
+  
+  // Load user's data from database
+  const loadUserData = async () => {
+    try {
+      // Load calendar events from API
+      const eventsResponse = await fetch('/api/calendar-events');
+      if (eventsResponse.ok) {
+        const eventsData = await eventsResponse.json();
+        setCalendarEvents(eventsData.map((event: any) => ({
+          ...event,
+          start: new Date(event.start),
+          end: new Date(event.end)
+        })));
+      }
+      
+      // Load today's notes from API
+      const today = new Date().toISOString().split('T')[0];
+      const notesResponse = await fetch(`/api/notes?date=${today}`);
+      if (notesResponse.ok) {
+        const noteData = await notesResponse.json();
+        if (noteData) {
+          setCurrentPage(noteData);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load user data:', error);
+    }
   };
   
-  const handleUpdateCalendarEvent = (updatedEvent: CalendarEvent) => {
-    setCalendarEvents(prev => 
-      prev.map(event => event.id === updatedEvent.id ? updatedEvent : event)
-    );
+  // Function to add a new calendar event
+  const addCalendarEvent = async (event: Omit<CalendarEvent, 'id'>) => {
+    try {
+      const response = await fetch('/api/calendar-events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(event)
+      });
+      
+      if (response.ok) {
+        const newEvent = await response.json();
+        setCalendarEvents(prev => [...prev, {
+          ...newEvent,
+          start: new Date(newEvent.start),
+          end: new Date(newEvent.end)
+        }]);
+        displayToast(`${event.title} added to calendar`);
+      }
+    } catch (error) {
+      console.error('Failed to add calendar event:', error);
+      displayToast('Failed to add event');
+    }
   };
   
-  const handleDeleteCalendarEvent = (eventId: string) => {
-    setCalendarEvents(prev => prev.filter(event => event.id !== eventId));
+  // Function to update an existing calendar event
+  const updateCalendarEvent = async (updatedEvent: CalendarEvent) => {
+    try {
+      const response = await fetch(`/api/calendar-events/${updatedEvent.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedEvent)
+      });
+      
+      if (response.ok) {
+        setCalendarEvents(prev => 
+          prev.map(event => event.id === updatedEvent.id ? updatedEvent : event)
+        );
+        displayToast(`${updatedEvent.title} updated`);
+      }
+    } catch (error) {
+      console.error('Failed to update calendar event:', error);
+      displayToast('Failed to update event');
+    }
   };
   
-  const handleCompleteTodo = (noteId: string, completed: boolean) => {
+  // Function to delete a calendar event
+  const deleteCalendarEvent = async (eventId: string) => {
+    try {
+      const eventToDelete = calendarEvents.find(e => e.id === eventId);
+      const response = await fetch(`/api/calendar-events/${eventId}`, {
+        method: 'DELETE'
+      });
+      
+      if (response.ok) {
+        setCalendarEvents(prev => prev.filter(event => event.id !== eventId));
+        if (eventToDelete) {
+          displayToast(`${eventToDelete.title} removed from calendar`);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to delete calendar event:', error);
+      displayToast('Failed to delete event');
+    }
+  };
+  
+  // Extract events from notes (existing logic)
+  useEffect(() => {
     if (!currentPage) return;
     
-    const allNotes = [...currentPage.notes];
-    const updatedNotes = allNotes.map(note => 
-      note.id === noteId 
-        ? { ...note, completed }
-        : note
+    const eventNotes = currentPage.notes.filter((note: Note) => 
+      note.type === 'event' || note.type === 'meeting' || 
+      note.type === 'travel' || note.type === 'birthday'
     );
     
-    setCurrentPage({
-      ...currentPage,
-      notes: updatedNotes,
-      lastModified: new Date()
+    eventNotes.forEach((note: Note) => {
+      if (calendarEvents.some(event => event.sourceNoteId === note.id)) {
+        return;
+      }
+      
+      const dateMatch = note.content.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+      const timeMatch = note.content.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
+      
+      if (dateMatch) {
+        const month = parseInt(dateMatch[1]) - 1;
+        const day = parseInt(dateMatch[2]);
+        let year = parseInt(dateMatch[3]);
+        if (year < 100) year += 2000;
+        
+        const eventDate = new Date(year, month, day);
+        let hours = 9;
+        let minutes = 0;
+        
+        if (timeMatch) {
+          hours = parseInt(timeMatch[1]);
+          minutes = parseInt(timeMatch[2]);
+          if (timeMatch[3] && timeMatch[3].toLowerCase() === 'pm' && hours < 12) {
+            hours += 12;
+          }
+        }
+        
+        eventDate.setHours(hours, minutes);
+        const endDate = new Date(eventDate);
+        endDate.setHours(endDate.getHours() + 1);
+        
+        addCalendarEvent({
+          title: note.content,
+          start: eventDate,
+          end: endDate,
+          type: note.type as 'travel' | 'meeting' | 'event' | 'birthday' | 'reminder',
+          description: note.content,
+          sourceNoteId: note.id
+        });
+      }
     });
+  }, [currentPage]);
+  
+  const handleCompleteTodo = async (noteId: string, completed: boolean) => {
+    if (!currentPage) return;
     
-    if (completed) {
-      displayToast("Task completed!");
+    try {
+      const response = await fetch(`/api/notes/${noteId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ completed })
+      });
+      
+      if (response.ok) {
+        const allNotes = [...currentPage.notes];
+        const updatedNotes = allNotes.map(note => 
+          note.id === noteId ? { ...note, completed } : note
+        );
+        
+        setCurrentPage({
+          ...currentPage,
+          notes: updatedNotes,
+          lastModified: new Date()
+        });
+        
+        if (completed) {
+          displayToast("Task completed!");
+        }
+      }
+    } catch (error) {
+      console.error('Failed to update todo:', error);
     }
   };
 
-  const handleDeleteTodo = (noteId: string) => {
+  const handleDeleteTodo = async (noteId: string) => {
     if (!currentPage) return;
     
-    const allNotes = [...currentPage.notes];
-    const filteredNotes = allNotes.filter(note => note.id !== noteId);
-    
-    setCurrentPage({
-      ...currentPage,
-      notes: filteredNotes,
-      lastModified: new Date()
-    });
-    
-    displayToast("Task deleted");
+    try {
+      const response = await fetch(`/api/notes/${noteId}`, {
+        method: 'DELETE'
+      });
+      
+      if (response.ok) {
+        const allNotes = [...currentPage.notes];
+        const filteredNotes = allNotes.filter(note => note.id !== noteId);
+        
+        setCurrentPage({
+          ...currentPage,
+          notes: filteredNotes,
+          lastModified: new Date()
+        });
+        
+        displayToast("Task deleted");
+      }
+    } catch (error) {
+      console.error('Failed to delete todo:', error);
+    }
   };
   
   const displayToast = (message: string) => {
@@ -73,31 +234,58 @@ export default function Dashboard() {
     setTimeout(() => setShowSuccessToast(false), 3000);
   };
   
-  // Get todo items for the current page
-  const todoItems = currentPage?.notes.filter(note => note.type === 'todo') || [];
+  const todoItems = currentPage?.notes.filter((note: Note) => note.type === 'todo') || [];
+
+  // Show loading state
+  if (loading || status === 'loading') {
+    return (
+      <div className="flex h-screen items-center justify-center" style={{
+        background: 'linear-gradient(135deg, #f5f7ff 0%, #e9ecff 25%, #e5e8ff 50%, #dbe3ff 75%, #d8e0ff 100%)'
+      }}>
+        <div className="text-center">
+          <div className="text-4xl mb-4">⏳</div>
+          <p className="text-gray-600">Loading your workspace...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex h-screen">
-      <LeftSidebarComponent 
-        calendarEvents={calendarEvents}
-        onAddEvent={handleAddCalendarEvent}
-        onUpdateEvent={handleUpdateCalendarEvent}
-        onDeleteEvent={handleDeleteCalendarEvent}
+    <div className="flex flex-col h-screen" style={{ 
+      background: 'linear-gradient(135deg, #f5f7ff 0%, #e9ecff 25%, #e5e8ff 50%, #dbe3ff 75%, #d8e0ff 100%)'
+    }}>
+      {/* Top Bar */}
+      <TopBar 
+        username={session?.user?.name || 'User'}
+        email={session?.user?.email || ''}
+        profileImage={session?.user?.image || undefined}
       />
-      <div className="flex-1 flex">
-        <div className="flex-1 border-r border-gray-200">
-          <CenterPanel 
-            currentPage={currentPage}
-            setCurrentPage={setCurrentPage}
-            onAddCalendarEvent={handleAddCalendarEvent}
+      
+      {/* Main Dashboard */}
+      <div className="flex flex-1 overflow-hidden">
+        <div className="frosted-panel" style={{ width: '160px' }}>
+          <LeftSidebar 
+            calendarEvents={calendarEvents} 
+            onAddEvent={addCalendarEvent}
+            onUpdateEvent={updateCalendarEvent}
+            onDeleteEvent={deleteCalendarEvent}
           />
         </div>
-        <div className="w-[350px] right-sidebar-gradient">
-          <RightSidebar 
-            todoItems={todoItems}
-            onCompleteTodo={handleCompleteTodo}
-            onDeleteTodo={handleDeleteTodo}
-          />
+        <div className="flex-1 flex">
+          <div className="flex-1 border-r border-gray-200 frosted-panel">
+            <CenterPanel 
+              currentPage={currentPage}
+              setCurrentPage={setCurrentPage}
+              onAddCalendarEvent={addCalendarEvent}
+            />
+          </div>
+          <div className="frosted-panel" style={{ width: '160px' }}>
+            <RightSidebar 
+              todoItems={todoItems}
+              onCompleteTodo={handleCompleteTodo}
+              onDeleteTodo={handleDeleteTodo}
+            />
+          </div>
         </div>
       </div>
       
@@ -126,10 +314,20 @@ export default function Dashboard() {
       )}
       
       <style jsx global>{`
-        .right-sidebar-gradient {
+        body {
           background: linear-gradient(135deg, #f5f7ff 0%, #e9ecff 25%, #e5e8ff 50%, #dbe3ff 75%, #d8e0ff 100%);
+          margin: 0;
+          padding: 0;
         }
-
+        
+        .frosted-panel {
+          backdrop-filter: blur(10px);
+          background-color: rgba(255, 255, 255, 0.7);
+          box-shadow: 0 1px 12px rgba(0, 0, 0, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          overflow: hidden;
+        }
+        
         @keyframes slideIn {
           from {
             transform: translateY(20px);
