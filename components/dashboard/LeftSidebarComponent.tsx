@@ -28,23 +28,12 @@ export default function LeftSidebarComponent({
       height: '100%', 
       overflowY: 'auto', 
       backgroundColor: '#FAFAFA', 
-      padding: '8px'
+      padding: '12px'
       // Width is controlled by the parent grid layout
     }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         
-        {/* Logo Card - Compact */}
-        <div style={{ 
-          backgroundColor: '#FFFFFF', 
-          border: '1px solid #E5E7EB', 
-          borderRadius: '10px',
-          padding: '8px'
-        }}>
-          <div style={{ textAlign: 'center' }}>
-            <h1 style={{ fontSize: '18px', fontWeight: '400', color: '#1F2937', margin: 0 }}>ExeAI</h1>
-            <p style={{ fontSize: '7px', color: '#6B7280', marginTop: '2px', letterSpacing: '0.05em' }}>LET IT WORK FOR YOU</p>
-          </div>
-        </div>
+        {/* Logo Card REMOVED - as requested */}
 
        
         {/* Calendar */}
@@ -56,21 +45,21 @@ export default function LeftSidebarComponent({
         />
        
         {/* Quick Actions Card */}
-        <div style={{ backgroundColor: '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: '10px', padding: '10px' }}>
-          <div style={{ fontSize: '9px', fontWeight: '600', color: '#6B7280', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        <div style={{ backgroundColor: '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: '10px', padding: '12px' }}>
+          <div style={{ fontSize: '10px', fontWeight: '600', color: '#6B7280', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             ACTIONS
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <button 
               onClick={handleNewMeetingClick}
               style={{ 
                 width: '100%', 
-                padding: '8px', 
+                padding: '10px', 
                 borderRadius: '8px', 
                 border: 'none', 
                 backgroundColor: '#4B5563', 
                 color: 'white', 
-                fontSize: '11px', 
+                fontSize: '12px', 
                 fontWeight: '600', 
                 cursor: 'pointer' 
               }}
@@ -79,12 +68,12 @@ export default function LeftSidebarComponent({
             </button>
             <button style={{ 
               width: '100%', 
-              padding: '8px', 
+              padding: '10px', 
               borderRadius: '8px', 
               border: 'none', 
               backgroundColor: '#10B981', 
               color: 'white', 
-              fontSize: '11px', 
+              fontSize: '12px', 
               fontWeight: '600', 
               cursor: 'pointer' 
             }}>

@@ -46,6 +46,7 @@ model User {
   expenses    Expense[]
   travelPlans TravelPlan[]
   shopping    ShoppingItem[]
+  settings    UserSettings? // One-to-one relationship with settings
 
   @@index([email])
   @@map("users")
@@ -91,6 +92,65 @@ model VerificationToken {
 
   @@unique([identifier, token])
   @@map("verification_tokens")
+}
+
+// ============================================
+// USER SETTINGS
+// ============================================
+
+model UserSettings {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Calendar Settings
+  calendarDefaultDuration Int     @default(60) // in minutes: 15, 30, 45, 60, 90, 120
+  calendarWeekendMode     String  @default("both_off") // all_working, alternate_sat, both_off
+  calendarFirstDayOfWeek  String  @default("sunday") // sunday, monday
+  calendarGoogleConnected Boolean @default(false)
+  calendarOutlookConnected Boolean @default(false)
+  calendarAppleConnected   Boolean @default(false)
+
+  // Clock Settings
+  clockShowSeconds      Boolean @default(true)
+  clockTimezone         String  @default("Asia/Kolkata")
+  timerDefaultDuration  Int     @default(300) // in seconds
+  timerSoundEnabled     Boolean @default(true)
+  worldClocks           String? @db.Text // JSON string of WorldClock[]
+
+  // Workspace Settings
+  workspaceTheme        String  @default("light") // light, dark
+  workspaceAccentColor  String  @default("#F4B000")
+  workspaceAutoSave     Int     @default(1500) // in milliseconds
+  workspaceFontSize     Int     @default(14)
+  workspaceSpellCheck   Boolean @default(true)
+  aiAnalysisMode        String  @default("automatic") // manual, automatic
+
+  // Todo Settings
+  todoDefaultPriority   String  @default("medium") // low, medium, high
+  todoShowCompleted     Boolean @default(true)
+  todoAutoArchiveDays   Int     @default(30)
+  todoSortBy            String  @default("date") // date, priority, manual
+  todoRemindersEnabled  Boolean @default(true)
+
+  // Email Settings (for future)
+  emailSignature        String? @db.Text
+  emailNotifications    Boolean @default(true)
+
+  // Message Settings (for future)
+  messageReadReceipts   Boolean @default(true)
+  messageNotifications  Boolean @default(true)
+
+  // General Preferences
+  language              String  @default("en")
+  dateFormat            String  @default("DD/MM/YYYY")
+  notificationsEnabled  Boolean @default(true)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("user_settings")
 }
 
 // ============================================

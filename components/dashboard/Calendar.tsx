@@ -1,7 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CalendarEvent as AppCalendarEvent } from '@/app/dashboard/types';
+import { createPortal } from 'react-dom';
+
+// Portal component to render modals at document.body level
+function Portal({ children }: { children: React.ReactNode }) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
+  return mounted ? createPortal(children, document.body) : null;
+}
 
 interface CalendarProps {
   events?: AppCalendarEvent[];
@@ -561,34 +574,49 @@ export default function Calendar({ events = [], onAddEvent, onUpdateEvent, onDel
         )}
       </div>
 
-      {/* Settings Modal */}
+      {/* Settings Modal - FIXED: Using Portal for proper positioning */}
       {showSettings && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000
-        }}
-        onClick={() => setShowSettings(false)}
-        >
+        <Portal>
+          {/* Backdrop Layer */}
           <div 
             style={{
-              backgroundColor: 'white',
-              borderRadius: '20px',
-              padding: '32px',
-              width: '500px',
-              maxHeight: '80vh',
-              overflow: 'auto',
-              boxShadow: '0 20px 60px rgba(0,0,0,0.2)'
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              width: '100vw',
+              height: '100vh',
+              backgroundColor: 'rgba(0,0,0,0.5)',
+              zIndex: 9998,
+              backdropFilter: 'blur(2px)'
             }}
-            onClick={(e) => e.stopPropagation()}
-          >
+            onClick={() => setShowSettings(false)}
+          />
+          
+          {/* Modal Content Layer */}
+          <div style={{
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 9999,
+            width: '500px',
+            maxWidth: '90vw',
+            maxHeight: '85vh'
+          }}>
+            <div 
+              style={{
+                backgroundColor: 'white',
+                borderRadius: '20px',
+                padding: '32px',
+                width: '100%',
+                maxHeight: '85vh',
+                overflow: 'auto',
+                boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
               <h3 style={{ margin: 0, fontSize: '22px', fontWeight: '700', color: '#1F2937' }}>
                 Calendar Settings
@@ -746,36 +774,52 @@ export default function Calendar({ events = [], onAddEvent, onUpdateEvent, onDel
             </button>
           </div>
         </div>
+        </Portal>
       )}
 
-      {/* Event Details Modal */}
+      {/* Event Details Modal - FIXED: Using Portal for proper positioning */}
       {showEventDetails && selectedDateEvents.length > 0 && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000
-        }}
-        onClick={() => setShowEventDetails(false)}
-        >
+        <Portal>
+          {/* Backdrop Layer */}
           <div 
             style={{
-              backgroundColor: 'white',
-              borderRadius: '20px',
-              padding: '32px',
-              width: '400px',
-              maxHeight: '600px',
-              overflow: 'auto',
-              boxShadow: '0 20px 60px rgba(0,0,0,0.2)'
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              width: '100vw',
+              height: '100vh',
+              backgroundColor: 'rgba(0,0,0,0.5)',
+              zIndex: 9998,
+              backdropFilter: 'blur(2px)'
             }}
-            onClick={(e) => e.stopPropagation()}
-          >
+            onClick={() => setShowEventDetails(false)}
+          />
+          
+          {/* Modal Content Layer */}
+          <div style={{
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 9999,
+            width: '400px',
+            maxWidth: '90vw',
+            maxHeight: '85vh'
+          }}>
+            <div 
+              style={{
+                backgroundColor: 'white',
+                borderRadius: '20px',
+                padding: '32px',
+                width: '100%',
+                maxHeight: '85vh',
+                overflow: 'auto',
+                boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '700', color: '#1F2937' }}>
                 {selectedDate?.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) || 'Event Details'}
@@ -860,6 +904,7 @@ export default function Calendar({ events = [], onAddEvent, onUpdateEvent, onDel
             </div>
           </div>
         </div>
+        </Portal>
       )}
     </>
   );

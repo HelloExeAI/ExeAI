@@ -1,17 +1,46 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { signIn } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 
 export default function SignInPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Check for error in URL parameters (from OAuth callback)
+  useEffect(() => {
+    const errorParam = searchParams.get('error');
+    if (errorParam) {
+      let errorMessage = 'Authentication failed. Please try again.';
+      
+      // Map NextAuth error codes to user-friendly messages
+      switch (errorParam) {
+        case 'Callback':
+          errorMessage = 'OAuth callback error. Please check your Google OAuth configuration.';
+          break;
+        case 'Configuration':
+          errorMessage = 'Server configuration error. Please contact support.';
+          break;
+        case 'AccessDenied':
+          errorMessage = 'Access denied. Please grant the necessary permissions.';
+          break;
+        case 'Verification':
+          errorMessage = 'Verification failed. Please try again.';
+          break;
+        default:
+          errorMessage = `Authentication error: ${errorParam}. Please try again.`;
+      }
+      
+      setError(errorMessage);
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,21 +56,29 @@ export default function SignInPage() {
 
       if (result?.error) {
         setError('Invalid email or password');
-      } else {
+        setIsLoading(false);
+      } else if (result?.ok) {
+        // Successful login
         router.push('/dashboard');
+        router.refresh();
       }
     } catch (err) {
       setError('Something went wrong. Please try again.');
-    } finally {
       setIsLoading(false);
     }
   };
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
+    setError('');
     try {
-      await signIn('google', { callbackUrl: '/dashboard' });
+      // Sign in with Google and redirect to dashboard
+      await signIn('google', { 
+        callbackUrl: '/dashboard',
+        redirect: true 
+      });
     } catch (err) {
+      console.error('Google sign-in error:', err);
       setError('Failed to sign in with Google');
       setIsLoading(false);
     }

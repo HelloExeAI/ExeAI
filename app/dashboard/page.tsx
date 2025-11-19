@@ -263,7 +263,8 @@ export default function Dashboard() {
       
       {/* Main Dashboard */}
       <div className="flex flex-1 overflow-hidden">
-        <div className="frosted-panel" style={{ width: '160px' }}>
+        {/* LEFT SIDEBAR - Increased width from 160px to 208px (30% increase) */}
+        <div className="frosted-panel" style={{ width: '208px' }}>
           <LeftSidebar 
             calendarEvents={calendarEvents} 
             onAddEvent={addCalendarEvent}
@@ -279,6 +280,7 @@ export default function Dashboard() {
               onAddCalendarEvent={addCalendarEvent}
             />
           </div>
+          {/* RIGHT SIDEBAR - Kept at 160px */}
           <div className="frosted-panel" style={{ width: '160px' }}>
             <RightSidebar 
               todoItems={todoItems}
