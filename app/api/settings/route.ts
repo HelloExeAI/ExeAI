@@ -3,10 +3,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import prisma from '@/lib/prisma';
-import { DEFAULT_USER_SETTINGS } from '@/types/settings';
+import { DEFAULT_USER_SETTINGS, WorldClock } from '@/types/settings';   
 
 // GET /api/settings - Fetch user settings
-export async function GET(request: NextRequest) {
+export async function GET(request: NextRequest) { 
   try {
     const session = await getServerSession(authOptions);
 
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
         data: {
           userId: user.id,
           ...DEFAULT_USER_SETTINGS,
-          worldClocks: DEFAULT_USER_SETTINGS.worldClocks ?? [],
+          worldClocks: DEFAULT_USER_SETTINGS.worldClocks ? JSON.stringify(DEFAULT_USER_SETTINGS.worldClocks as unknown as WorldClock[]) : null, 
         },
       });
       return NextResponse.json(newSettings);

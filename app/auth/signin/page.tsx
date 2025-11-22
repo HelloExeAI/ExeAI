@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
 
 export default function SignInPage() {
   const router = useRouter();
@@ -23,7 +22,7 @@ export default function SignInPage() {
       // Map NextAuth error codes to user-friendly messages
       switch (errorParam) {
         case 'Callback':
-          errorMessage = 'OAuth callback error. Please check your Google OAuth configuration.';
+          errorMessage = 'OAuth callback error. Database connection issue - please check your database configuration.';
           break;
         case 'Configuration':
           errorMessage = 'Server configuration error. Please contact support.';
@@ -58,7 +57,6 @@ export default function SignInPage() {
         setError('Invalid email or password');
         setIsLoading(false);
       } else if (result?.ok) {
-        // Successful login
         router.push('/dashboard');
         router.refresh();
       }
@@ -73,13 +71,14 @@ export default function SignInPage() {
     setError('');
     try {
       // Sign in with Google and redirect to dashboard
+      // Using redirect: true will handle the OAuth flow automatically
       await signIn('google', { 
         callbackUrl: '/dashboard',
         redirect: true 
       });
     } catch (err) {
       console.error('Google sign-in error:', err);
-      setError('Failed to sign in with Google');
+      setError('Failed to sign in with Google. Please try again.');
       setIsLoading(false);
     }
   };
@@ -93,10 +92,7 @@ export default function SignInPage() {
       background: 'linear-gradient(135deg, #f5f7ff 0%, #e9ecff 25%, #e5e8ff 50%, #dbe3ff 75%, #d8e0ff 100%)',
       padding: '20px'
     }}>
-      <div style={{
-        width: '100%',
-        maxWidth: '440px'
-      }}>
+      <div style={{ width: '100%', maxWidth: '440px' }}>
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <h1 style={{ 
@@ -218,16 +214,13 @@ export default function SignInPage() {
           {/* Email/Password Form */}
           <form onSubmit={handleSubmit}>
             <div style={{ marginBottom: '20px' }}>
-              <label
-                htmlFor="email"
-                style={{
-                  display: 'block',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  color: '#374151',
-                  marginBottom: '8px'
-                }}
-              >
+              <label htmlFor="email" style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '600',
+                color: '#374151',
+                marginBottom: '8px'
+              }}>
                 Email Address
               </label>
               <input
@@ -261,16 +254,13 @@ export default function SignInPage() {
             </div>
 
             <div style={{ marginBottom: '24px' }}>
-              <label
-                htmlFor="password"
-                style={{
-                  display: 'block',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  color: '#374151',
-                  marginBottom: '8px'
-                }}
-              >
+              <label htmlFor="password" style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '600',
+                color: '#374151',
+                marginBottom: '8px'
+              }}>
                 Password
               </label>
               <input
@@ -344,14 +334,11 @@ export default function SignInPage() {
             color: '#6B7280'
           }}>
             Don't have an account?{' '}
-            <Link
-              href="/auth/signup"
-              style={{
-                color: '#3B82F6',
-                fontWeight: '600',
-                textDecoration: 'none'
-              }}
-            >
+            <Link href="/auth/signup" style={{
+              color: '#3B82F6',
+              fontWeight: '600',
+              textDecoration: 'none'
+            }}>
               Sign up
             </Link>
           </p>

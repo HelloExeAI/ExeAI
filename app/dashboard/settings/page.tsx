@@ -6,6 +6,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import SettingsLayout from '@/components/settings/SettingsLayout';
 import CalendarSettings from '@/components/settings/CalendarSettings';
+import ClockSettings from '@/components/settings/ClockSettings';
 import { UserSettings } from '@/types/settings';
 
 export default function SettingsPage() {
@@ -147,17 +148,13 @@ export default function SettingsPage() {
           />
         )}
 
-        {/* Clock Settings Tab - Coming Soon */}
+        {/* Clock Settings Tab */}
         {currentTab === 'clock' && (
-          <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-            <div style={{ fontSize: '64px', marginBottom: '16px' }}>⏰</div>
-            <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#1F2937', marginBottom: '8px' }}>
-              Clock & Time Settings
-            </h2>
-            <p style={{ fontSize: '16px', color: '#6B7280' }}>
-              Coming soon...
-            </p>
-          </div>
+          <ClockSettings 
+            settings={settings} 
+            onUpdate={handleUpdateSettings}
+            isSaving={isSaving}
+          />
         )}
 
         {/* Workspace Settings Tab - Coming Soon */}

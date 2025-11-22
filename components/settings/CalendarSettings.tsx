@@ -11,557 +11,424 @@ interface CalendarSettingsProps {
 }
 
 export default function CalendarSettings({ settings, onUpdate, isSaving }: CalendarSettingsProps) {
-  const [localSettings, setLocalSettings] = useState({
-    calendarDefaultDuration: settings.calendarDefaultDuration,
-    calendarWeekendMode: settings.calendarWeekendMode,
-    calendarFirstDayOfWeek: settings.calendarFirstDayOfWeek,
-    calendarGoogleConnected: settings.calendarGoogleConnected,
-    calendarOutlookConnected: settings.calendarOutlookConnected,
-    calendarAppleConnected: settings.calendarAppleConnected,
-  });
-
-  const [hasChanges, setHasChanges] = useState(false);
-
-  const handleChange = (key: keyof typeof localSettings, value: any) => {
-    setLocalSettings(prev => ({ ...prev, [key]: value }));
-    setHasChanges(true);
-  };
+  const [googleConnected, setGoogleConnected] = useState(settings.calendarGoogleConnected);
+  const [outlookConnected, setOutlookConnected] = useState(settings.calendarOutlookConnected);
+  const [appleConnected, setAppleConnected] = useState(settings.calendarAppleConnected);
+  const [defaultDuration, setDefaultDuration] = useState(settings.calendarDefaultDuration);
+  const [weekendMode, setWeekendMode] = useState(settings.calendarWeekendMode);
 
   const handleSave = async () => {
-    await onUpdate(localSettings);
-    setHasChanges(false);
-  };
-
-  const handleCancel = () => {
-    setLocalSettings({
-      calendarDefaultDuration: settings.calendarDefaultDuration,
-      calendarWeekendMode: settings.calendarWeekendMode,
-      calendarFirstDayOfWeek: settings.calendarFirstDayOfWeek,
-      calendarGoogleConnected: settings.calendarGoogleConnected,
-      calendarOutlookConnected: settings.calendarOutlookConnected,
-      calendarAppleConnected: settings.calendarAppleConnected,
+    await onUpdate({
+      calendarGoogleConnected: googleConnected,
+      calendarOutlookConnected: outlookConnected,
+      calendarAppleConnected: appleConnected,
+      calendarDefaultDuration: defaultDuration,
+      calendarWeekendMode: weekendMode,
     });
-    setHasChanges(false);
   };
 
-  const handleConnectCalendar = async (provider: 'google' | 'outlook' | 'apple') => {
-    // TODO: Implement OAuth flow
-    alert(`${provider.charAt(0).toUpperCase() + provider.slice(1)} Calendar connection will be implemented with OAuth`);
-    
-    // For now, just toggle the connection status
-    const key = `calendar${provider.charAt(0).toUpperCase() + provider.slice(1)}Connected` as keyof typeof localSettings;
-    handleChange(key, !localSettings[key]);
-  };
+  const hasChanges = 
+    googleConnected !== settings.calendarGoogleConnected ||
+    outlookConnected !== settings.calendarOutlookConnected ||
+    appleConnected !== settings.calendarAppleConnected ||
+    defaultDuration !== settings.calendarDefaultDuration ||
+    weekendMode !== settings.calendarWeekendMode;
 
   return (
-    <div style={{ maxWidth: '800px' }}>
-      {/* Connect Calendars Section */}
-      <div style={{ marginBottom: '40px' }}>
+    <div>
+      {/* Compact Header */}
+      <div style={{ marginBottom: '20px' }}>
         <h2 style={{ 
-          fontSize: '18px', 
+          fontSize: '20px', 
           fontWeight: '700', 
           color: '#1F2937', 
-          marginBottom: '8px' 
+          margin: '0 0 4px 0' 
         }}>
-          Connect Calendars
+          Calendar Settings
         </h2>
         <p style={{ 
-          fontSize: '14px', 
+          fontSize: '13px', 
           color: '#6B7280', 
-          marginBottom: '20px' 
+          margin: 0 
+        }}>
+          Connect external calendars and customize preferences
+        </p>
+      </div>
+
+      {/* Connect Calendars - Compact */}
+      <div style={{
+        backgroundColor: 'white',
+        border: '1px solid #E5E7EB',
+        borderRadius: '12px',
+        padding: '16px',
+        marginBottom: '16px'
+      }}>
+        <h3 style={{ 
+          fontSize: '15px', 
+          fontWeight: '700', 
+          color: '#1F2937', 
+          margin: '0 0 12px 0'
+        }}>
+          Connect Calendars
+        </h3>
+        <p style={{ 
+          fontSize: '12px', 
+          color: '#6B7280', 
+          margin: '0 0 16px 0' 
         }}>
           Sync your external calendars to view all events in one place
         </p>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {/* Google Calendar */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '20px',
-            borderRadius: '12px',
-            backgroundColor: '#F9FAFB',
-            border: '1px solid #E5E7EB'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <div style={{ 
-                fontSize: '32px', 
-                width: '48px', 
-                height: '48px', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                backgroundColor: 'white',
-                borderRadius: '10px',
-                border: '1px solid #E5E7EB'
-              }}>
-                📅
+        {/* Google Calendar - Compact */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '12px',
+          backgroundColor: '#F9FAFB',
+          borderRadius: '10px',
+          marginBottom: '10px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '8px',
+              backgroundColor: 'white',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '18px',
+              border: '1px solid #E5E7EB'
+            }}>
+              📅
+            </div>
+            <div>
+              <div style={{ fontSize: '13px', fontWeight: '600', color: '#1F2937', marginBottom: '2px' }}>
+                Google Calendar
               </div>
-              <div>
-                <div style={{ fontSize: '16px', fontWeight: '600', color: '#1F2937', marginBottom: '4px' }}>
-                  Google Calendar
-                </div>
-                <div style={{ fontSize: '13px', color: '#6B7280' }}>
-                  Sync with your Google account
-                </div>
+              <div style={{ fontSize: '11px', color: '#6B7280' }}>
+                Sync with your Google account
               </div>
             </div>
-            
-            {localSettings.calendarGoogleConnected ? (
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 16px',
-                borderRadius: '8px',
-                backgroundColor: '#D1FAE5',
-                color: '#047857',
-                fontSize: '14px',
-                fontWeight: '600'
-              }}>
-                <span>✓</span>
-                <span>Connected</span>
-              </div>
-            ) : (
-              <button
-                onClick={() => handleConnectCalendar('google')}
-                style={{
-                  padding: '10px 20px',
-                  borderRadius: '8px',
-                  border: 'none',
-                  backgroundColor: '#4285F4',
-                  color: 'white',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#3367D6'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#4285F4'}
-              >
-                Connect
-              </button>
-            )}
           </div>
+          {googleConnected ? (
+            <div style={{
+              padding: '6px 14px',
+              borderRadius: '6px',
+              backgroundColor: '#D1FAE5',
+              color: '#065F46',
+              fontSize: '11px',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}>
+              <span>✓</span> Connected
+            </div>
+          ) : (
+            <button
+              onClick={() => setGoogleConnected(true)}
+              disabled={isSaving}
+              style={{
+                padding: '6px 14px',
+                borderRadius: '6px',
+                border: 'none',
+                backgroundColor: '#3B82F6',
+                color: 'white',
+                fontSize: '12px',
+                fontWeight: '600',
+                cursor: isSaving ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              Connect
+            </button>
+          )}
+        </div>
 
-          {/* Microsoft Outlook */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '20px',
-            borderRadius: '12px',
-            backgroundColor: '#F9FAFB',
-            border: '1px solid #E5E7EB'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <div style={{ 
-                fontSize: '32px', 
-                width: '48px', 
-                height: '48px', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                backgroundColor: 'white',
-                borderRadius: '10px',
-                border: '1px solid #E5E7EB'
-              }}>
-                📧
+        {/* Microsoft Outlook - Compact */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '12px',
+          backgroundColor: '#F9FAFB',
+          borderRadius: '10px',
+          marginBottom: '10px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '8px',
+              backgroundColor: 'white',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '18px',
+              border: '1px solid #E5E7EB'
+            }}>
+              📧
+            </div>
+            <div>
+              <div style={{ fontSize: '13px', fontWeight: '600', color: '#1F2937', marginBottom: '2px' }}>
+                Microsoft Outlook
               </div>
-              <div>
-                <div style={{ fontSize: '16px', fontWeight: '600', color: '#1F2937', marginBottom: '4px' }}>
-                  Microsoft Outlook
-                </div>
-                <div style={{ fontSize: '13px', color: '#6B7280' }}>
-                  Sync with your Microsoft account
-                </div>
+              <div style={{ fontSize: '11px', color: '#6B7280' }}>
+                Sync with your Microsoft account
               </div>
             </div>
-            
-            {localSettings.calendarOutlookConnected ? (
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 16px',
-                borderRadius: '8px',
-                backgroundColor: '#D1FAE5',
-                color: '#047857',
-                fontSize: '14px',
-                fontWeight: '600'
-              }}>
-                <span>✓</span>
-                <span>Connected</span>
-              </div>
-            ) : (
-              <button
-                onClick={() => handleConnectCalendar('outlook')}
-                style={{
-                  padding: '10px 20px',
-                  borderRadius: '8px',
-                  border: 'none',
-                  backgroundColor: '#0078D4',
-                  color: 'white',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#106EBE'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#0078D4'}
-              >
-                Connect
-              </button>
-            )}
           </div>
+          {outlookConnected ? (
+            <div style={{
+              padding: '6px 14px',
+              borderRadius: '6px',
+              backgroundColor: '#D1FAE5',
+              color: '#065F46',
+              fontSize: '11px',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}>
+              <span>✓</span> Connected
+            </div>
+          ) : (
+            <button
+              onClick={() => setOutlookConnected(true)}
+              disabled={isSaving}
+              style={{
+                padding: '6px 14px',
+                borderRadius: '6px',
+                border: 'none',
+                backgroundColor: '#3B82F6',
+                color: 'white',
+                fontSize: '12px',
+                fontWeight: '600',
+                cursor: isSaving ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              Connect
+            </button>
+          )}
+        </div>
 
-          {/* Apple Calendar */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '20px',
-            borderRadius: '12px',
-            backgroundColor: '#F9FAFB',
-            border: '1px solid #E5E7EB'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <div style={{ 
-                fontSize: '32px', 
-                width: '48px', 
-                height: '48px', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                backgroundColor: 'white',
-                borderRadius: '10px',
-                border: '1px solid #E5E7EB'
-              }}>
-                🍎
+        {/* Apple Calendar - Compact */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '12px',
+          backgroundColor: '#F9FAFB',
+          borderRadius: '10px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '8px',
+              backgroundColor: 'white',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '18px',
+              border: '1px solid #E5E7EB'
+            }}>
+              🍎
+            </div>
+            <div>
+              <div style={{ fontSize: '13px', fontWeight: '600', color: '#1F2937', marginBottom: '2px' }}>
+                Apple Calendar
               </div>
-              <div>
-                <div style={{ fontSize: '16px', fontWeight: '600', color: '#1F2937', marginBottom: '4px' }}>
-                  Apple Calendar
-                </div>
-                <div style={{ fontSize: '13px', color: '#6B7280' }}>
-                  Sync with your iCloud account
-                </div>
+              <div style={{ fontSize: '11px', color: '#6B7280' }}>
+                Sync with your iCloud account
               </div>
             </div>
-            
-            {localSettings.calendarAppleConnected ? (
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 16px',
-                borderRadius: '8px',
-                backgroundColor: '#D1FAE5',
-                color: '#047857',
-                fontSize: '14px',
-                fontWeight: '600'
-              }}>
-                <span>✓</span>
-                <span>Connected</span>
-              </div>
-            ) : (
-              <button
-                onClick={() => handleConnectCalendar('apple')}
-                style={{
-                  padding: '10px 20px',
-                  borderRadius: '8px',
-                  border: 'none',
-                  backgroundColor: '#000000',
-                  color: 'white',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#1F1F1F'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#000000'}
-              >
-                Connect
-              </button>
-            )}
           </div>
+          {appleConnected ? (
+            <div style={{
+              padding: '6px 14px',
+              borderRadius: '6px',
+              backgroundColor: '#D1FAE5',
+              color: '#065F46',
+              fontSize: '11px',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}>
+              <span>✓</span> Connected
+            </div>
+          ) : (
+            <button
+              onClick={() => setAppleConnected(true)}
+              disabled={isSaving}
+              style={{
+                padding: '6px 14px',
+                borderRadius: '6px',
+                border: 'none',
+                backgroundColor: '#1F2937',
+                color: 'white',
+                fontSize: '12px',
+                fontWeight: '600',
+                cursor: isSaving ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              Connect
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Calendar Preferences Section */}
-      <div style={{ marginBottom: '40px' }}>
-        <h2 style={{ 
-          fontSize: '18px', 
+      {/* Calendar Preferences - Compact */}
+      <div style={{
+        backgroundColor: 'white',
+        border: '1px solid #E5E7EB',
+        borderRadius: '12px',
+        padding: '16px',
+        marginBottom: '16px'
+      }}>
+        <h3 style={{ 
+          fontSize: '15px', 
           fontWeight: '700', 
           color: '#1F2937', 
-          marginBottom: '8px' 
+          margin: '0 0 12px 0'
         }}>
           Calendar Preferences
-        </h2>
+        </h3>
         <p style={{ 
-          fontSize: '14px', 
+          fontSize: '12px', 
           color: '#6B7280', 
-          marginBottom: '20px' 
+          margin: '0 0 16px 0' 
         }}>
           Customize how your calendar displays and behaves
         </p>
 
-        <div style={{ 
-          backgroundColor: '#FFFFFF', 
-          border: '1px solid #E5E7EB', 
-          borderRadius: '12px', 
-          padding: '24px' 
-        }}>
-          {/* Default Event Duration */}
-          <div style={{ marginBottom: '24px' }}>
-            <label style={{ 
-              display: 'block', 
-              fontSize: '14px', 
-              fontWeight: '600', 
-              color: '#374151', 
-              marginBottom: '8px' 
-            }}>
-              Default Event Duration
-            </label>
-            <select
-              value={localSettings.calendarDefaultDuration}
-              onChange={(e) => handleChange('calendarDefaultDuration', parseInt(e.target.value))}
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                borderRadius: '8px',
-                border: '1px solid #D1D5DB',
-                fontSize: '14px',
-                backgroundColor: 'white',
-                cursor: 'pointer'
-              }}
-            >
-              <option value={15}>15 minutes</option>
-              <option value={30}>30 minutes</option>
-              <option value={45}>45 minutes</option>
-              <option value={60}>1 hour</option>
-              <option value={90}>1.5 hours</option>
-              <option value={120}>2 hours</option>
-            </select>
-          </div>
+        {/* Default Event Duration - Compact */}
+        <div style={{ marginBottom: '14px' }}>
+          <label style={{
+            display: 'block',
+            fontSize: '12px',
+            fontWeight: '600',
+            color: '#374151',
+            marginBottom: '6px'
+          }}>
+            Default Event Duration
+          </label>
+          <select
+            value={defaultDuration}
+            onChange={(e) => setDefaultDuration(Number(e.target.value))}
+            disabled={isSaving}
+            style={{
+              width: '100%',
+              padding: '8px 12px',
+              fontSize: '13px',
+              border: '1px solid #E5E7EB',
+              borderRadius: '8px',
+              outline: 'none',
+              transition: 'all 0.2s',
+              backgroundColor: isSaving ? '#F9FAFB' : 'white',
+              cursor: isSaving ? 'not-allowed' : 'pointer'
+            }}
+            onFocus={(e) => {
+              e.target.style.borderColor = '#F4B000';
+              e.target.style.boxShadow = '0 0 0 2px rgba(244, 176, 0, 0.1)';
+            }}
+            onBlur={(e) => {
+              e.target.style.borderColor = '#E5E7EB';
+              e.target.style.boxShadow = 'none';
+            }}
+          >
+            <option value={30}>30 minutes</option>
+            <option value={60}>1 hour</option>
+            <option value={90}>1.5 hours</option>
+            <option value={120}>2 hours</option>
+          </select>
+        </div>
 
-          {/* Weekend Schedule */}
-          <div style={{ marginBottom: '24px' }}>
-            <label style={{ 
-              display: 'block', 
-              fontSize: '14px', 
-              fontWeight: '600', 
-              color: '#374151', 
-              marginBottom: '12px' 
-            }}>
-              Weekend Schedule
-            </label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <label style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                padding: '12px 16px',
-                borderRadius: '8px',
-                border: '2px solid',
-                borderColor: localSettings.calendarWeekendMode === 'all_working' ? '#F4B000' : '#E5E7EB',
-                backgroundColor: localSettings.calendarWeekendMode === 'all_working' ? '#FFFBEB' : '#F9FAFB',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}>
-                <input
-                  type="radio"
-                  name="weekendMode"
-                  value="all_working"
-                  checked={localSettings.calendarWeekendMode === 'all_working'}
-                  onChange={(e) => handleChange('calendarWeekendMode', e.target.value)}
-                  style={{ marginRight: '12px', cursor: 'pointer' }}
-                />
-                <div>
-                  <div style={{ fontSize: '14px', fontWeight: '600', color: '#1F2937' }}>
-                    All Saturdays Working
-                  </div>
-                  <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '2px' }}>
-                    6-day work week (Monday - Saturday)
-                  </div>
-                </div>
-              </label>
-
-              <label style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                padding: '12px 16px',
-                borderRadius: '8px',
-                border: '2px solid',
-                borderColor: localSettings.calendarWeekendMode === 'alternate_sat' ? '#F4B000' : '#E5E7EB',
-                backgroundColor: localSettings.calendarWeekendMode === 'alternate_sat' ? '#FFFBEB' : '#F9FAFB',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}>
-                <input
-                  type="radio"
-                  name="weekendMode"
-                  value="alternate_sat"
-                  checked={localSettings.calendarWeekendMode === 'alternate_sat'}
-                  onChange={(e) => handleChange('calendarWeekendMode', e.target.value)}
-                  style={{ marginRight: '12px', cursor: 'pointer' }}
-                />
-                <div>
-                  <div style={{ fontSize: '14px', fontWeight: '600', color: '#1F2937' }}>
-                    Alternate Saturdays Working
-                  </div>
-                  <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '2px' }}>
-                    First, third, fifth Saturday working
-                  </div>
-                </div>
-              </label>
-
-              <label style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                padding: '12px 16px',
-                borderRadius: '8px',
-                border: '2px solid',
-                borderColor: localSettings.calendarWeekendMode === 'both_off' ? '#F4B000' : '#E5E7EB',
-                backgroundColor: localSettings.calendarWeekendMode === 'both_off' ? '#FFFBEB' : '#F9FAFB',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}>
-                <input
-                  type="radio"
-                  name="weekendMode"
-                  value="both_off"
-                  checked={localSettings.calendarWeekendMode === 'both_off'}
-                  onChange={(e) => handleChange('calendarWeekendMode', e.target.value)}
-                  style={{ marginRight: '12px', cursor: 'pointer' }}
-                />
-                <div>
-                  <div style={{ fontSize: '14px', fontWeight: '600', color: '#1F2937' }}>
-                    Saturday & Sunday Off
-                  </div>
-                  <div style={{ fontSize: '13px', color: '#6B7280', marginTop: '2px' }}>
-                    5-day work week (Monday - Friday)
-                  </div>
-                </div>
-              </label>
-            </div>
-          </div>
-
-          {/* First Day of Week */}
-          <div>
-            <label style={{ 
-              display: 'block', 
-              fontSize: '14px', 
-              fontWeight: '600', 
-              color: '#374151', 
-              marginBottom: '12px' 
-            }}>
-              First Day of Week
-            </label>
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <label style={{ 
-                flex: 1,
-                display: 'flex', 
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '12px',
-                borderRadius: '8px',
-                border: '2px solid',
-                borderColor: localSettings.calendarFirstDayOfWeek === 'sunday' ? '#F4B000' : '#E5E7EB',
-                backgroundColor: localSettings.calendarFirstDayOfWeek === 'sunday' ? '#FFFBEB' : '#F9FAFB',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}>
-                <input
-                  type="radio"
-                  name="firstDayOfWeek"
-                  value="sunday"
-                  checked={localSettings.calendarFirstDayOfWeek === 'sunday'}
-                  onChange={(e) => handleChange('calendarFirstDayOfWeek', e.target.value)}
-                  style={{ marginRight: '8px', cursor: 'pointer' }}
-                />
-                <span style={{ fontSize: '14px', fontWeight: '600', color: '#1F2937' }}>
-                  Sunday
-                </span>
-              </label>
-
-              <label style={{ 
-                flex: 1,
-                display: 'flex', 
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '12px',
-                borderRadius: '8px',
-                border: '2px solid',
-                borderColor: localSettings.calendarFirstDayOfWeek === 'monday' ? '#F4B000' : '#E5E7EB',
-                backgroundColor: localSettings.calendarFirstDayOfWeek === 'monday' ? '#FFFBEB' : '#F9FAFB',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}>
-                <input
-                  type="radio"
-                  name="firstDayOfWeek"
-                  value="monday"
-                  checked={localSettings.calendarFirstDayOfWeek === 'monday'}
-                  onChange={(e) => handleChange('calendarFirstDayOfWeek', e.target.value)}
-                  style={{ marginRight: '8px', cursor: 'pointer' }}
-                />
-                <span style={{ fontSize: '14px', fontWeight: '600', color: '#1F2937' }}>
-                  Monday
-                </span>
-              </label>
-            </div>
-          </div>
+        {/* Weekend Schedule - Compact */}
+        <div>
+          <label style={{
+            display: 'block',
+            fontSize: '12px',
+            fontWeight: '600',
+            color: '#374151',
+            marginBottom: '6px'
+          }}>
+            Weekend Schedule
+          </label>
+          <select
+            value={weekendMode}
+            onChange={(e) => setWeekendMode(e.target.value as 'all_working' | 'alternate_sat' | 'both_off')}
+            disabled={isSaving}
+            style={{
+              width: '100%',
+              padding: '8px 12px',
+              fontSize: '13px',
+              border: '1px solid #E5E7EB',
+              borderRadius: '8px',
+              outline: 'none',
+              transition: 'all 0.2s',
+              backgroundColor: isSaving ? '#F9FAFB' : 'white',
+              cursor: isSaving ? 'not-allowed' : 'pointer'
+            }}
+            onFocus={(e) => {
+              e.target.style.borderColor = '#F4B000';
+              e.target.style.boxShadow = '0 0 0 2px rgba(244, 176, 0, 0.1)';
+            }}
+            onBlur={(e) => {
+              e.target.style.borderColor = '#E5E7EB';
+              e.target.style.boxShadow = 'none';
+            }}
+          >
+            <option value="all_saturdays_working">All Saturdays Working</option>
+            <option value="alternate_saturdays_working">Alternate Saturdays Working</option>
+            <option value="no_saturdays_working">No Saturdays Working</option>
+          </select>
         </div>
       </div>
 
-      {/* Save/Cancel Buttons */}
+      {/* Compact Save Button */}
       {hasChanges && (
         <div style={{
+          position: 'sticky',
+          bottom: '16px',
           display: 'flex',
-          gap: '12px',
           justifyContent: 'flex-end',
-          padding: '20px',
-          backgroundColor: '#F9FAFB',
-          borderRadius: '12px',
-          border: '1px solid #E5E7EB'
+          gap: '10px'
         }}>
-          <button
-            onClick={handleCancel}
-            disabled={isSaving}
-            style={{
-              padding: '12px 24px',
-              borderRadius: '8px',
-              border: '1px solid #D1D5DB',
-              backgroundColor: 'white',
-              fontSize: '14px',
-              fontWeight: '600',
-              color: '#374151',
-              cursor: isSaving ? 'not-allowed' : 'pointer',
-              opacity: isSaving ? 0.6 : 1,
-              transition: 'all 0.2s'
-            }}
-          >
-            Cancel
-          </button>
           <button
             onClick={handleSave}
             disabled={isSaving}
             style={{
-              padding: '12px 24px',
+              padding: '10px 24px',
               borderRadius: '8px',
               border: 'none',
-              backgroundColor: '#F4B000',
-              fontSize: '14px',
-              fontWeight: '600',
+              backgroundColor: isSaving ? '#FCD34D' : '#F4B000',
               color: 'white',
+              fontSize: '13px',
+              fontWeight: '600',
               cursor: isSaving ? 'not-allowed' : 'pointer',
-              opacity: isSaving ? 0.6 : 1,
               transition: 'all 0.2s',
-              boxShadow: '0 2px 8px rgba(244, 176, 0, 0.3)'
+              boxShadow: isSaving ? 'none' : '0 2px 8px rgba(244, 176, 0, 0.25)'
+            }}
+            onMouseEnter={(e) => {
+              if (!isSaving) {
+                e.currentTarget.style.backgroundColor = '#D99E00';
+                e.currentTarget.style.transform = 'translateY(-1px)';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(244, 176, 0, 0.3)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#F4B000';
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 2px 8px rgba(244, 176, 0, 0.25)';
             }}
           >
-            {isSaving ? 'Saving...' : 'Save Settings'}
+            {isSaving ? 'Saving...' : 'Save Changes'}
           </button>
         </div>
       )}

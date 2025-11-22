@@ -31,8 +31,13 @@ export default function TopBar({ username = 'User', email = '', profileImage }: 
       {/* Left: Logo */}
       <Logo />
 
-      {/* Center: Clock Widget */}
-      <ClockWidget />
+      {/* Center-Left: Clock Widget */}
+      <div style={{ 
+        position: 'absolute',
+        left: '260px'
+      }}>
+        <ClockWidget />
+      </div>
 
       {/* Right: User Profile */}
       <UserProfile 
