@@ -43,10 +43,10 @@ export default function ClockWidget() {
       if (response.ok) {
         const data = await response.json();
         setSettings({
-          location: 'Bengaluru,IN',
+          location: data.clockWeatherLocation || 'Bengaluru,IN',
           showSeconds: data.clockShowSeconds ?? true,
-          timezone: data.clockTimezone ?? 'Asia/Kolkata',
-          timerDefaultDuration: data.timerDefaultDuration ?? 300,
+          timezone: data.clockTimezone || 'Asia/Kolkata',
+          timerDefaultDuration: data.timerDefaultDuration || 300,
           timerSoundEnabled: data.timerSoundEnabled ?? true
         });
         setSettingsLoaded(true);
@@ -87,10 +87,12 @@ export default function ClockWidget() {
       }
     };
 
-    fetchWeather();
-    const interval = setInterval(fetchWeather, 600000);
-    return () => clearInterval(interval);
-  }, [settings.location]);
+    if (settingsLoaded) {
+      fetchWeather();
+      const interval = setInterval(fetchWeather, 600000);
+      return () => clearInterval(interval);
+    }
+  }, [settings.location, settingsLoaded]);
 
   const getWeatherIcon = (condition: string): string => {
     switch (condition.toLowerCase()) {

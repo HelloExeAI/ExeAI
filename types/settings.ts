@@ -1,5 +1,10 @@
-// src/app/types/settings.ts
-// TypeScript types for EXEAI Settings
+// src/types/settings.ts
+
+export interface WorldClock {
+  city: string;
+  timezone: string;
+  offset: string;
+}
 
 export interface UserSettings {
   id: string;
@@ -8,59 +13,60 @@ export interface UserSettings {
   updatedAt: Date;
 
   // Calendar Settings
-  calendarDefaultDuration: number; // 15, 30, 45, 60, 90, 120 minutes
-  calendarWeekendMode: 'all_working' | 'alternate_sat' | 'both_off';
-  calendarFirstDayOfWeek: 'sunday' | 'monday';
+  calendarDefaultDuration: number;
+  calendarWeekendMode: string;
+  calendarFirstDayOfWeek: string;
   calendarGoogleConnected: boolean;
   calendarOutlookConnected: boolean;
   calendarAppleConnected: boolean;
+  calendarShowCurrentEvent?: boolean;
 
   // Clock Settings
   clockShowSeconds: boolean;
   clockTimezone: string;
-  timerDefaultDuration: number; // in seconds
+  clockWeatherLocation?: string;
+  timerDefaultDuration: number;
   timerSoundEnabled: boolean;
-  worldClocks?: string | null; // JSON string of WorldClock[]
+  worldClocks?: string | WorldClock[] | null;
 
   // Workspace Settings
-  workspaceTheme: 'light' | 'dark';
+  workspaceThemeMode?: string;
   workspaceAccentColor: string;
-  workspaceAutoSave: number; // in milliseconds
-  workspaceFontSize: number;
-  workspaceSpellCheck: boolean;
-  aiAnalysisMode: 'manual' | 'automatic';
+  workspaceFontSize?: string;
+  workspaceSidebarWidth?: string;
+  workspaceShowLeftSidebar?: boolean;
+  workspaceShowRightSidebar?: boolean;
 
   // Todo Settings
-  todoDefaultPriority: 'low' | 'medium' | 'high';
+  todoDefaultPriority: string;
   todoShowCompleted: boolean;
   todoAutoArchiveDays: number;
-  todoSortBy: 'date' | 'priority' | 'manual';
+  todoSortBy: string;
   todoRemindersEnabled: boolean;
 
   // Email Settings
+  emailGmailConnected?: boolean;
+  emailOutlookConnected?: boolean;
   emailSignature?: string | null;
-  emailNotifications: boolean;
+  emailNotifications?: boolean;
 
   // Message Settings
-  messageReadReceipts: boolean;
-  messageNotifications: boolean;
+  messageWhatsAppConnected?: boolean;
+  messageSMSConnected?: boolean;
+  messageTeamsConnected?: boolean;
+  messageSlackConnected?: boolean;
+  messageReadReceipts?: boolean;
+  messageNotifications?: boolean;
 
   // General Preferences
   language: string;
   dateFormat: string;
+  timeFormat?: string;
   notificationsEnabled: boolean;
+  soundEnabled?: boolean;
 }
 
-export interface WorldClock {
-  city: string;
-  timezone: string;
-}
-
-// Partial type for updating settings
-export type UpdateSettingsInput = Partial<Omit<UserSettings, 'id' | 'userId' | 'createdAt' | 'updatedAt'>>;
-
-// Default settings for new users
-export const DEFAULT_USER_SETTINGS: Omit<UserSettings, 'id' | 'userId' | 'createdAt' | 'updatedAt'> = {
+export const DEFAULT_USER_SETTINGS: Partial<UserSettings> = {
   // Calendar
   calendarDefaultDuration: 60,
   calendarWeekendMode: 'both_off',
@@ -68,21 +74,23 @@ export const DEFAULT_USER_SETTINGS: Omit<UserSettings, 'id' | 'userId' | 'create
   calendarGoogleConnected: false,
   calendarOutlookConnected: false,
   calendarAppleConnected: false,
+  calendarShowCurrentEvent: true,
 
   // Clock
   clockShowSeconds: true,
   clockTimezone: 'Asia/Kolkata',
+  clockWeatherLocation: 'Bengaluru,IN',
   timerDefaultDuration: 300,
   timerSoundEnabled: true,
   worldClocks: null,
 
   // Workspace
-  workspaceTheme: 'light',
+  workspaceThemeMode: 'light',
   workspaceAccentColor: '#F4B000',
-  workspaceAutoSave: 1500,
-  workspaceFontSize: 14,
-  workspaceSpellCheck: true,
-  aiAnalysisMode: 'automatic',
+  workspaceFontSize: 'medium',
+  workspaceSidebarWidth: 'default',
+  workspaceShowLeftSidebar: true,
+  workspaceShowRightSidebar: true,
 
   // Todo
   todoDefaultPriority: 'medium',
@@ -92,15 +100,23 @@ export const DEFAULT_USER_SETTINGS: Omit<UserSettings, 'id' | 'userId' | 'create
   todoRemindersEnabled: true,
 
   // Email
+  emailGmailConnected: false,
+  emailOutlookConnected: false,
   emailSignature: null,
   emailNotifications: true,
 
   // Messages
+  messageWhatsAppConnected: false,
+  messageSMSConnected: false,
+  messageTeamsConnected: false,
+  messageSlackConnected: false,
   messageReadReceipts: true,
   messageNotifications: true,
 
   // General
   language: 'en',
   dateFormat: 'DD/MM/YYYY',
+  timeFormat: '12h',
   notificationsEnabled: true,
+  soundEnabled: true,
 };

@@ -1,18 +1,33 @@
-// components/dashboard/TopBar.tsx
+// src/components/dashboard/TopBar.tsx
 'use client';
 
 import React from 'react';
 import Logo from './Logo';
 import ClockWidget from './ClockWidget';
+import CurrentEventWidget from './CurrentEventWidget';
 import UserProfile from './UserProfile';
+
+interface CalendarEvent {
+  id: string;
+  title: string;
+  start: Date;
+  end: Date;
+  type: string;
+}
 
 interface TopBarProps {
   username?: string;
   email?: string;
   profileImage?: string;
+  calendarEvents?: CalendarEvent[];
 }
 
-export default function TopBar({ username = 'User', email = '', profileImage }: TopBarProps) {
+export default function TopBar({ 
+  username = 'User', 
+  email = '', 
+  profileImage,
+  calendarEvents = []
+}: TopBarProps) {
   return (
     <div style={{
       height: '60px',
@@ -31,12 +46,16 @@ export default function TopBar({ username = 'User', email = '', profileImage }: 
       {/* Left: Logo */}
       <Logo />
 
-      {/* Center-Left: Clock Widget */}
+      {/* Center-Left: Clock Widget + Current Event */}
       <div style={{ 
         position: 'absolute',
-        left: '260px'
+        left: '260px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px'
       }}>
         <ClockWidget />
+        <CurrentEventWidget events={calendarEvents} />
       </div>
 
       {/* Right: User Profile */}

@@ -16,6 +16,7 @@ export default function CalendarSettings({ settings, onUpdate, isSaving }: Calen
   const [appleConnected, setAppleConnected] = useState(settings.calendarAppleConnected);
   const [defaultDuration, setDefaultDuration] = useState(settings.calendarDefaultDuration);
   const [weekendMode, setWeekendMode] = useState(settings.calendarWeekendMode);
+  const [showCurrentEvent, setShowCurrentEvent] = useState(settings.calendarShowCurrentEvent ?? true);
 
   const handleSave = async () => {
     await onUpdate({
@@ -24,6 +25,7 @@ export default function CalendarSettings({ settings, onUpdate, isSaving }: Calen
       calendarAppleConnected: appleConnected,
       calendarDefaultDuration: defaultDuration,
       calendarWeekendMode: weekendMode,
+      calendarShowCurrentEvent: showCurrentEvent,
     });
   };
 
@@ -32,7 +34,8 @@ export default function CalendarSettings({ settings, onUpdate, isSaving }: Calen
     outlookConnected !== settings.calendarOutlookConnected ||
     appleConnected !== settings.calendarAppleConnected ||
     defaultDuration !== settings.calendarDefaultDuration ||
-    weekendMode !== settings.calendarWeekendMode;
+    weekendMode !== settings.calendarWeekendMode ||
+    showCurrentEvent !== (settings.calendarShowCurrentEvent ?? true);
 
   return (
     <div>
@@ -362,7 +365,7 @@ export default function CalendarSettings({ settings, onUpdate, isSaving }: Calen
           </label>
           <select
             value={weekendMode}
-            onChange={(e) => setWeekendMode(e.target.value as 'all_working' | 'alternate_sat' | 'both_off')}
+            onChange={(e) => setWeekendMode(e.target.value as any)}
             disabled={isSaving}
             style={{
               width: '100%',
@@ -388,6 +391,87 @@ export default function CalendarSettings({ settings, onUpdate, isSaving }: Calen
             <option value="alternate_saturdays_working">Alternate Saturdays Working</option>
             <option value="no_saturdays_working">No Saturdays Working</option>
           </select>
+        </div>
+      </div>
+
+      {/* Top Bar Display */}
+      <div style={{
+        backgroundColor: 'white',
+        border: '1px solid #E5E7EB',
+        borderRadius: '12px',
+        padding: '16px',
+        marginBottom: '16px'
+      }}>
+        <h3 style={{ 
+          fontSize: '15px', 
+          fontWeight: '700', 
+          color: '#1F2937', 
+          margin: '0 0 12px 0'
+        }}>
+          Top Bar Display
+        </h3>
+
+        {/* Show Current Event */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '12px',
+          backgroundColor: '#F9FAFB',
+          borderRadius: '10px'
+        }}>
+          <div>
+            <div style={{ 
+              fontSize: '13px', 
+              fontWeight: '600', 
+              color: '#1F2937',
+              marginBottom: '2px'
+            }}>
+              Show Current Event
+            </div>
+            <div style={{ fontSize: '11px', color: '#6B7280' }}>
+              Display ongoing or upcoming event in top bar
+            </div>
+          </div>
+          <label style={{ 
+            position: 'relative', 
+            display: 'inline-block', 
+            width: '44px', 
+            height: '24px',
+            cursor: isSaving ? 'not-allowed' : 'pointer',
+            opacity: isSaving ? 0.5 : 1
+          }}>
+            <input
+              type="checkbox"
+              checked={showCurrentEvent}
+              onChange={(e) => setShowCurrentEvent(e.target.checked)}
+              disabled={isSaving}
+              style={{ opacity: 0, width: 0, height: 0 }}
+            />
+            <span style={{
+              position: 'absolute',
+              cursor: isSaving ? 'not-allowed' : 'pointer',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: showCurrentEvent ? '#F4B000' : '#D1D5DB',
+              transition: '0.3s',
+              borderRadius: '24px'
+            }}>
+              <span style={{
+                position: 'absolute',
+                content: '',
+                height: '18px',
+                width: '18px',
+                left: showCurrentEvent ? '23px' : '3px',
+                bottom: '3px',
+                backgroundColor: 'white',
+                transition: '0.3s',
+                borderRadius: '50%'
+              }} />
+            </span>
+          </label>
         </div>
       </div>
 

@@ -1,12 +1,17 @@
 // src/app/dashboard/settings/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';      
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import SettingsLayout from '@/components/settings/SettingsLayout';
 import CalendarSettings from '@/components/settings/CalendarSettings';
 import ClockSettings from '@/components/settings/ClockSettings';
+import WorkspaceSettings from '@/components/settings/WorkspaceSettings';
+import TodoSettings from '@/components/settings/TodoSettings';    
+import EmailSettings from '@/components/settings/EmailSettings';
+import MessagesSettings from '@/components/settings/MessagesSettings';
+import PreferencesSettings from '@/components/settings/PreferencesSettings';
 import { UserSettings } from '@/types/settings';
 
 export default function SettingsPage() {
@@ -157,69 +162,49 @@ export default function SettingsPage() {
           />
         )}
 
-        {/* Workspace Settings Tab - Coming Soon */}
+        {/* Workspace Settings Tab */}
         {currentTab === 'workspace' && (
-          <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-            <div style={{ fontSize: '64px', marginBottom: '16px' }}>💼</div>
-            <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#1F2937', marginBottom: '8px' }}>
-              Workspace Settings
-            </h2>
-            <p style={{ fontSize: '16px', color: '#6B7280' }}>
-              Coming soon...
-            </p>
-          </div>
+          <WorkspaceSettings 
+            settings={settings} 
+            onUpdate={handleUpdateSettings}
+            isSaving={isSaving}
+          />
         )}
 
-        {/* Todos Settings Tab - Coming Soon */}
+        {/* Todo Settings Tab */}
         {currentTab === 'todos' && (
-          <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-            <div style={{ fontSize: '64px', marginBottom: '16px' }}>✅</div>
-            <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#1F2937', marginBottom: '8px' }}>
-              To-Do List Settings
-            </h2>
-            <p style={{ fontSize: '16px', color: '#6B7280' }}>
-              Coming soon...
-            </p>
-          </div>
+          <TodoSettings 
+            settings={settings} 
+            onUpdate={handleUpdateSettings}
+            isSaving={isSaving}
+          />
         )}
 
-        {/* Email Settings Tab - Coming Soon */}
+        {/* Email Settings Tab */}
         {currentTab === 'email' && (
-          <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-            <div style={{ fontSize: '64px', marginBottom: '16px' }}>📧</div>
-            <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#1F2937', marginBottom: '8px' }}>
-              Email Settings
-            </h2>
-            <p style={{ fontSize: '16px', color: '#6B7280' }}>
-              Coming soon...
-            </p>
-          </div>
+          <EmailSettings 
+            settings={settings} 
+            onUpdate={handleUpdateSettings}
+            isSaving={isSaving}
+          />
         )}
 
-        {/* Messages Settings Tab - Coming Soon */}
+        {/* Messages Settings Tab */}
         {currentTab === 'messages' && (
-          <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-            <div style={{ fontSize: '64px', marginBottom: '16px' }}>💬</div>
-            <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#1F2937', marginBottom: '8px' }}>
-              Messages Settings
-            </h2>
-            <p style={{ fontSize: '16px', color: '#6B7280' }}>
-              Coming soon...
-            </p>
-          </div>
+          <MessagesSettings 
+            settings={settings} 
+            onUpdate={handleUpdateSettings}
+            isSaving={isSaving}
+          />
         )}
 
-        {/* Preferences Tab - Coming Soon */}
+        {/* Preferences Tab */}
         {currentTab === 'preferences' && (
-          <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-            <div style={{ fontSize: '64px', marginBottom: '16px' }}>⚙️</div>
-            <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#1F2937', marginBottom: '8px' }}>
-              General Preferences
-            </h2>
-            <p style={{ fontSize: '16px', color: '#6B7280' }}>
-              Coming soon...
-            </p>
-          </div>
+          <PreferencesSettings 
+            settings={settings} 
+            onUpdate={handleUpdateSettings}
+            isSaving={isSaving}
+          />
         )}
       </SettingsLayout>
 

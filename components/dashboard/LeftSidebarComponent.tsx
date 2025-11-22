@@ -2,40 +2,46 @@
 
 import React, { useState } from 'react';
 import Calendar from './Calendar';
-import { CalendarEvent } from '../../app/types';
+import { CalendarEvent, Note } from '../../app/types';
+import TodoPopupModal from './TodoPopupModal';
 
 interface LeftSidebarProps {
   calendarEvents?: CalendarEvent[];
+  todoItems?: Note[];
   onAddEvent?: (event: Omit<CalendarEvent, 'id'>) => void;
   onUpdateEvent?: (event: CalendarEvent) => void;
   onDeleteEvent?: (eventId: string) => void;
+  onCompleteTodo?: (noteId: string, completed: boolean) => void;
+  onDeleteTodo?: (noteId: string) => void;
+  onAddTodo?: (todo: Omit<Note, 'id' | 'createdAt'>) => void;
+  onUpdateTodo?: (noteId: string, updates: Partial<Note>) => void;
 }
 
 export default function LeftSidebarComponent({ 
-  calendarEvents = [], 
+  calendarEvents = [],
+  todoItems = [],
   onAddEvent, 
   onUpdateEvent, 
-  onDeleteEvent 
+  onDeleteEvent,
+  onCompleteTodo = () => {},
+  onDeleteTodo = () => {},
+  onAddTodo = () => {},
+  onUpdateTodo = () => {}
 }: LeftSidebarProps) {
-  const [showAddEventModal, setShowAddEventModal] = useState(false);
+  const [showTodoModal, setShowTodoModal] = useState(false);
   
-  const handleNewMeetingClick = () => {
-    setShowAddEventModal(true);
-  };
-  
+  // Get top 5 active todos
+  const activeTodos = todoItems.filter(todo => !todo.completed).slice(0, 5);
+
   return (
     <div style={{ 
       height: '100%', 
       overflowY: 'auto', 
       backgroundColor: '#FAFAFA', 
       padding: '12px'
-      // Width is controlled by the parent grid layout
     }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         
-        {/* Logo Card REMOVED - as requested */}
-
-       
         {/* Calendar */}
         <Calendar 
           events={calendarEvents} 
@@ -44,344 +50,170 @@ export default function LeftSidebarComponent({
           onDeleteEvent={onDeleteEvent}
         />
        
-        {/* Quick Actions Card */}
-        <div style={{ backgroundColor: '#FFFFFF', border: '1px solid #E5E7EB', borderRadius: '10px', padding: '12px' }}>
-          <div style={{ fontSize: '10px', fontWeight: '600', color: '#6B7280', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            ACTIONS
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <button 
-              onClick={handleNewMeetingClick}
-              style={{ 
-                width: '100%', 
-                padding: '10px', 
-                borderRadius: '8px', 
-                border: 'none', 
-                backgroundColor: '#4B5563', 
-                color: 'white', 
-                fontSize: '12px', 
-                fontWeight: '600', 
-                cursor: 'pointer' 
-              }}
-            >
-              📅 Meeting
-            </button>
-            <button style={{ 
-              width: '100%', 
-              padding: '10px', 
-              borderRadius: '8px', 
-              border: 'none', 
-              backgroundColor: '#10B981', 
-              color: 'white', 
-              fontSize: '12px', 
-              fontWeight: '600', 
-              cursor: 'pointer' 
+        {/* Compact To-Do List */}
+        <div style={{ 
+          backgroundColor: '#FFFFFF', 
+          border: '1px solid #E5E7EB', 
+          borderRadius: '10px', 
+          padding: '12px' 
+        }}>
+          {/* Header with + button */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: '12px',
+            cursor: 'pointer'
+          }}
+          onClick={() => setShowTodoModal(true)}
+          >
+            <div style={{
+              fontSize: '12px',
+              fontWeight: '700',
+              color: '#1F2937',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
             }}>
-              ✅ Task
+              <span style={{ color: '#F4B000' }}>✅</span>
+              To-Do ({todoItems.filter(t => !t.completed).length})
+            </div>
+            
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowTodoModal(true);
+              }}
+              style={{
+                width: '24px',
+                height: '24px',
+                borderRadius: '6px',
+                border: 'none',
+                backgroundColor: '#F4B000',
+                color: 'white',
+                fontSize: '16px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#D99E00'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#F4B000'}
+            >
+              +
             </button>
+          </div>
+
+          {/* Todo List - Compact */}
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '6px'
+          }}>
+            {activeTodos.length === 0 ? (
+              <div style={{
+                padding: '16px',
+                textAlign: 'center',
+                color: '#9CA3AF',
+                fontSize: '12px'
+              }}>
+                <div style={{ fontSize: '24px', marginBottom: '6px' }}>✓</div>
+                <div>No tasks yet</div>
+              </div>
+            ) : (
+              activeTodos.map(todo => {
+                const getPriorityIcon = (priority?: string) => {
+                  switch (priority) {
+                    case 'high': return '🔴';
+                    case 'medium': return '🟡';
+                    case 'low': return '🟢';
+                    default: return '';
+                  }
+                };
+
+                return (
+                  <div
+                    key={todo.id}
+                    onClick={() => setShowTodoModal(true)}
+                    style={{
+                      padding: '8px 10px',
+                      backgroundColor: '#F9FAFB',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#F3F4F6';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = '#F9FAFB';
+                    }}
+                  >
+                    <span style={{ fontSize: '10px', flexShrink: 0 }}>
+                      {getPriorityIcon(todo.priority)}
+                    </span>
+                    <div style={{
+                      fontSize: '12px',
+                      fontWeight: '500',
+                      color: '#1F2937',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      flex: 1
+                    }}>
+                      {todo.content}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+
+            {/* View All Link */}
+            {activeTodos.length > 0 && (
+              <button
+                onClick={() => setShowTodoModal(true)}
+                style={{
+                  marginTop: '4px',
+                  padding: '6px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  backgroundColor: 'transparent',
+                  color: '#F4B000',
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  textAlign: 'center',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#FFFBEB';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+              >
+                View All →
+              </button>
+            )}
           </div>
         </div>
       </div>
-      
-      {/* Add Event Modal */}
-      {showAddEventModal && onAddEvent && (
-        <AddEventModal 
-          onClose={() => setShowAddEventModal(false)} 
-          onAddEvent={onAddEvent} 
-        />
-      )}
-    </div>
-  );
-}
 
-// Add Event Modal Component
-interface AddEventModalProps {
-  onClose: () => void;
-  onAddEvent: (event: Omit<CalendarEvent, 'id'>) => void;
-  initialEvent?: Omit<CalendarEvent, 'id'>;
-}
-
-function AddEventModal({ onClose, onAddEvent, initialEvent }: AddEventModalProps) {
-  const [title, setTitle] = useState(initialEvent?.title || '');
-  const [eventType, setEventType] = useState<CalendarEvent['type']>(initialEvent?.type || 'meeting');
-  const [startDate, setStartDate] = useState<string>(
-    initialEvent?.start 
-      ? new Date(initialEvent.start).toISOString().split('T')[0]
-      : new Date().toISOString().split('T')[0]
-  );
-  const [startTime, setStartTime] = useState<string>(
-    initialEvent?.start 
-      ? new Date(initialEvent.start).toTimeString().slice(0, 5)
-      : '09:00'
-  );
-  const [endTime, setEndTime] = useState<string>(
-    initialEvent?.end 
-      ? new Date(initialEvent.end).toTimeString().slice(0, 5)
-      : '10:00'
-  );
-  const [description, setDescription] = useState(initialEvent?.description || '');
-  const [location, setLocation] = useState(initialEvent?.location || '');
-  
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Create date objects from form values
-    const startDateTime = new Date(`${startDate}T${startTime}`);
-    const endDateTime = new Date(`${startDate}T${endTime}`);
-    
-    // Create the event object
-    const newEvent = {
-      title,
-      type: eventType,
-      start: startDateTime,
-      end: endDateTime,
-      description,
-      location
-    };
-    
-    // Add the event
-    onAddEvent(newEvent);
-    
-    // Close the modal
-    onClose();
-  };
-  
-  return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0,0,0,0.5)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1000
-    }}
-    onClick={onClose}
-    >
-      <div 
-        style={{
-          backgroundColor: 'white',
-          borderRadius: '20px',
-          padding: '28px',
-          width: '480px',
-          maxHeight: '90vh',
-          overflow: 'auto',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h3 style={{ margin: '0 0 20px 0', fontSize: '20px', fontWeight: '700', color: '#1F2937' }}>
-          {initialEvent ? 'Edit Event' : 'Add New Event'}
-        </h3>
-        
-        <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '16px' }}>
-            <label 
-              htmlFor="title" 
-              style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#4B5563', marginBottom: '6px' }}
-            >
-              Title
-            </label>
-            <input
-              id="title"
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Event title"
-              required
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                borderRadius: '8px',
-                border: '1px solid #E5E7EB',
-                fontSize: '14px'
-              }}
-            />
-          </div>
-          
-          <div style={{ marginBottom: '16px' }}>
-            <label 
-              htmlFor="eventType" 
-              style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#4B5563', marginBottom: '6px' }}
-            >
-              Event Type
-            </label>
-            <select
-              id="eventType"
-              value={eventType}
-              onChange={(e) => setEventType(e.target.value as CalendarEvent['type'])}
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                borderRadius: '8px',
-                border: '1px solid #E5E7EB',
-                fontSize: '14px'
-              }}
-            >
-              <option value="meeting">Meeting</option>
-              <option value="event">Event</option>
-              <option value="travel">Travel</option>
-              <option value="birthday">Birthday</option>
-              <option value="reminder">Reminder</option>
-            </select>
-          </div>
-          
-          <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
-            <div style={{ flex: 1 }}>
-              <label 
-                htmlFor="startDate" 
-                style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#4B5563', marginBottom: '6px' }}
-              >
-                Date
-              </label>
-              <input
-                id="startDate"
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                required
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  borderRadius: '8px',
-                  border: '1px solid #E5E7EB',
-                  fontSize: '14px'
-                }}
-              />
-            </div>
-            
-            <div style={{ flex: 1 }}>
-              <label 
-                htmlFor="startTime" 
-                style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#4B5563', marginBottom: '6px' }}
-              >
-                Start Time
-              </label>
-              <input
-                id="startTime"
-                type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                required
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  borderRadius: '8px',
-                  border: '1px solid #E5E7EB',
-                  fontSize: '14px'
-                }}
-              />
-            </div>
-            
-            <div style={{ flex: 1 }}>
-              <label 
-                htmlFor="endTime" 
-                style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#4B5563', marginBottom: '6px' }}
-              >
-                End Time
-              </label>
-              <input
-                id="endTime"
-                type="time"
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                required
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  borderRadius: '8px',
-                  border: '1px solid #E5E7EB',
-                  fontSize: '14px'
-                }}
-              />
-            </div>
-          </div>
-          
-          <div style={{ marginBottom: '16px' }}>
-            <label 
-              htmlFor="location" 
-              style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#4B5563', marginBottom: '6px' }}
-            >
-              Location (Optional)
-            </label>
-            <input
-              id="location"
-              type="text"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              placeholder="Location"
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                borderRadius: '8px',
-                border: '1px solid #E5E7EB',
-                fontSize: '14px'
-              }}
-            />
-          </div>
-          
-          <div style={{ marginBottom: '24px' }}>
-            <label 
-              htmlFor="description" 
-              style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#4B5563', marginBottom: '6px' }}
-            >
-              Description (Optional)
-            </label>
-            <textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Add a description"
-              rows={4}
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                borderRadius: '8px',
-                border: '1px solid #E5E7EB',
-                fontSize: '14px',
-                resize: 'vertical'
-              }}
-            />
-          </div>
-          
-          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-            <button
-              type="button"
-              onClick={onClose}
-              style={{
-                padding: '10px 16px',
-                borderRadius: '8px',
-                border: '1px solid #E5E7EB',
-                backgroundColor: 'white',
-                fontSize: '14px',
-                fontWeight: '600',
-                color: '#4B5563',
-                cursor: 'pointer'
-              }}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              style={{
-                padding: '10px 16px',
-                borderRadius: '8px',
-                border: 'none',
-                backgroundColor: '#3B82F6',
-                fontSize: '14px',
-                fontWeight: '600',
-                color: 'white',
-                cursor: 'pointer'
-              }}
-            >
-              {initialEvent ? 'Update Event' : 'Add Event'}
-            </button>
-          </div>
-        </form>
-      </div>
+      {/* Todo Popup Modal */}
+      <TodoPopupModal
+        isOpen={showTodoModal}
+        onClose={() => setShowTodoModal(false)}
+        todoItems={todoItems}
+        onCompleteTodo={onCompleteTodo}
+        onDeleteTodo={onDeleteTodo}
+        onAddTodo={onAddTodo}
+        onUpdateTodo={onUpdateTodo}
+      />
     </div>
   );
 }

@@ -172,6 +172,7 @@ export default function Dashboard() {
     });
   }, [currentPage]);
   
+  // Handle completing a todo
   const handleCompleteTodo = async (noteId: string, completed: boolean) => {
     if (!currentPage) return;
     
@@ -203,6 +204,7 @@ export default function Dashboard() {
     }
   };
 
+  // Handle deleting a todo
   const handleDeleteTodo = async (noteId: string) => {
     if (!currentPage) return;
     
@@ -225,6 +227,55 @@ export default function Dashboard() {
       }
     } catch (error) {
       console.error('Failed to delete todo:', error);
+    }
+  };
+
+  // Handle adding a new todo
+  const handleAddTodo = (todo: Omit<Note, 'id' | 'createdAt'>) => {
+    if (!currentPage) return;
+
+    const newTodo: Note = {
+      ...todo,
+      id: `todo-${Date.now()}`,
+      createdAt: new Date()
+    };
+
+    setCurrentPage({
+      ...currentPage,
+      notes: [...currentPage.notes, newTodo],
+      lastModified: new Date()
+    });
+
+    displayToast("Task added!");
+  };
+
+  // Handle updating a todo
+  const handleUpdateTodo = async (noteId: string, updates: Partial<Note>) => {
+    if (!currentPage) return;
+    
+    try {
+      const response = await fetch(`/api/notes/${noteId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+      
+      if (response.ok) {
+        const allNotes = [...currentPage.notes];
+        const updatedNotes = allNotes.map(note => 
+          note.id === noteId ? { ...note, ...updates } : note
+        );
+        
+        setCurrentPage({
+          ...currentPage,
+          notes: updatedNotes,
+          lastModified: new Date()
+        });
+        
+        displayToast("Task updated!");
+      }
+    } catch (error) {
+      console.error('Failed to update todo:', error);
     }
   };
   
@@ -259,20 +310,28 @@ export default function Dashboard() {
         username={session?.user?.name || 'User'}
         email={session?.user?.email || ''}
         profileImage={session?.user?.image || undefined}
+        calendarEvents={calendarEvents}
       />
       
       {/* Main Dashboard */}
       <div className="flex flex-1 overflow-hidden">
-        {/* LEFT SIDEBAR - Increased width from 160px to 208px (30% increase) */}
+        {/* LEFT SIDEBAR - 208px width */}
         <div className="frosted-panel" style={{ width: '208px' }}>
           <LeftSidebar 
-            calendarEvents={calendarEvents} 
+            calendarEvents={calendarEvents}
+            todoItems={todoItems}
             onAddEvent={addCalendarEvent}
             onUpdateEvent={updateCalendarEvent}
             onDeleteEvent={deleteCalendarEvent}
+            onCompleteTodo={handleCompleteTodo}
+            onDeleteTodo={handleDeleteTodo}
+            onAddTodo={handleAddTodo}
+            onUpdateTodo={handleUpdateTodo}
           />
         </div>
+        
         <div className="flex-1 flex">
+          {/* CENTER PANEL */}
           <div className="flex-1 border-r border-gray-200 frosted-panel">
             <CenterPanel 
               currentPage={currentPage}
@@ -280,18 +339,17 @@ export default function Dashboard() {
               onAddCalendarEvent={addCalendarEvent}
             />
           </div>
-          {/* RIGHT SIDEBAR - Kept at 160px */}
-          <div className="frosted-panel" style={{ width: '160px' }}>
+          
+          {/* RIGHT SIDEBAR - 208px width (same as left) */}
+          <div className="frosted-panel" style={{ width: '208px' }}>
             <RightSidebar 
-              todoItems={todoItems}
-              onCompleteTodo={handleCompleteTodo}
-              onDeleteTodo={handleDeleteTodo}
+              onAddTodo={handleAddTodo}
             />
           </div>
         </div>
       </div>
       
-      {/* Toast */}
+      {/* Toast Notification */}  
       {showSuccessToast && (
         <div style={{
           position: 'fixed',

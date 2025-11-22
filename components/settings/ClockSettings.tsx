@@ -1,7 +1,7 @@
 // src/components/settings/ClockSettings.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { UserSettings } from '@/types/settings';
 
 interface ClockSettingsProps {
@@ -10,21 +10,170 @@ interface ClockSettingsProps {
   isSaving: boolean;
 }
 
+// ALL TIMEZONES from UTC-12 to UTC+14
 const TIMEZONES = [
-  { value: 'America/New_York', label: 'Eastern Time (US)' },
-  { value: 'America/Chicago', label: 'Central Time (US)' },
-  { value: 'America/Denver', label: 'Mountain Time (US)' },
-  { value: 'America/Los_Angeles', label: 'Pacific Time (US)' },
-  { value: 'Europe/London', label: 'London (GMT)' },
-  { value: 'Europe/Paris', label: 'Paris (CET)' },
-  { value: 'Europe/Berlin', label: 'Berlin (CET)' },
-  { value: 'Asia/Dubai', label: 'Dubai (GST)' },
-  { value: 'Asia/Kolkata', label: 'India (IST)' },
-  { value: 'Asia/Singapore', label: 'Singapore (SGT)' },
-  { value: 'Asia/Tokyo', label: 'Tokyo (JST)' },
-  { value: 'Asia/Shanghai', label: 'Shanghai (CST)' },
-  { value: 'Australia/Sydney', label: 'Sydney (AEDT)' },
-  { value: 'Pacific/Auckland', label: 'Auckland (NZDT)' },
+  // UTC-12 to UTC-11
+  { value: 'Etc/GMT+12', label: '(UTC-12:00) International Date Line West', offset: -12 },
+  { value: 'Pacific/Midway', label: '(UTC-11:00) Midway Island, Samoa', offset: -11 },
+  { value: 'Pacific/Niue', label: '(UTC-11:00) Niue', offset: -11 },
+  { value: 'Pacific/Pago_Pago', label: '(UTC-11:00) Pago Pago', offset: -11 },
+  
+  // UTC-10
+  { value: 'Pacific/Honolulu', label: '(UTC-10:00) Hawaii', offset: -10 },
+  { value: 'Pacific/Rarotonga', label: '(UTC-10:00) Cook Islands', offset: -10 },
+  { value: 'Pacific/Tahiti', label: '(UTC-10:00) Tahiti', offset: -10 },
+  
+  // UTC-09:30
+  { value: 'Pacific/Marquesas', label: '(UTC-09:30) Marquesas Islands', offset: -9.5 },
+  
+  // UTC-09
+  { value: 'America/Anchorage', label: '(UTC-09:00) Alaska', offset: -9 },
+  { value: 'Pacific/Gambier', label: '(UTC-09:00) Gambier Islands', offset: -9 },
+  
+  // UTC-08
+  { value: 'America/Los_Angeles', label: '(UTC-08:00) Pacific Time (US & Canada)', offset: -8 },
+  { value: 'America/Tijuana', label: '(UTC-08:00) Tijuana, Baja California', offset: -8 },
+  { value: 'America/Vancouver', label: '(UTC-08:00) Vancouver', offset: -8 },
+  
+  // UTC-07
+  { value: 'America/Denver', label: '(UTC-07:00) Mountain Time (US & Canada)', offset: -7 },
+  { value: 'America/Phoenix', label: '(UTC-07:00) Arizona', offset: -7 },
+  { value: 'America/Chihuahua', label: '(UTC-07:00) Chihuahua, La Paz, Mazatlan', offset: -7 },
+  
+  // UTC-06
+  { value: 'America/Chicago', label: '(UTC-06:00) Central Time (US & Canada)', offset: -6 },
+  { value: 'America/Mexico_City', label: '(UTC-06:00) Guadalajara, Mexico City, Monterrey', offset: -6 },
+  { value: 'America/Regina', label: '(UTC-06:00) Saskatchewan', offset: -6 },
+  { value: 'America/Guatemala', label: '(UTC-06:00) Central America', offset: -6 },
+  
+  // UTC-05
+  { value: 'America/New_York', label: '(UTC-05:00) Eastern Time (US & Canada)', offset: -5 },
+  { value: 'America/Toronto', label: '(UTC-05:00) Toronto', offset: -5 },
+  { value: 'America/Bogota', label: '(UTC-05:00) Bogota, Lima, Quito', offset: -5 },
+  { value: 'America/Lima', label: '(UTC-05:00) Lima', offset: -5 },
+  { value: 'America/Panama', label: '(UTC-05:00) Panama', offset: -5 },
+  
+  // UTC-04
+  { value: 'America/Caracas', label: '(UTC-04:00) Caracas', offset: -4 },
+  { value: 'America/La_Paz', label: '(UTC-04:00) La Paz', offset: -4 },
+  { value: 'America/Santiago', label: '(UTC-04:00) Santiago', offset: -4 },
+  { value: 'America/Halifax', label: '(UTC-04:00) Atlantic Time (Canada)', offset: -4 },
+  { value: 'America/Manaus', label: '(UTC-04:00) Manaus', offset: -4 },
+  
+  // UTC-03:30
+  { value: 'America/St_Johns', label: '(UTC-03:30) Newfoundland', offset: -3.5 },
+  
+  // UTC-03
+  { value: 'America/Sao_Paulo', label: '(UTC-03:00) Brasilia', offset: -3 },
+  { value: 'America/Argentina/Buenos_Aires', label: '(UTC-03:00) Buenos Aires', offset: -3 },
+  { value: 'America/Montevideo', label: '(UTC-03:00) Montevideo', offset: -3 },
+  { value: 'America/Godthab', label: '(UTC-03:00) Greenland', offset: -3 },
+  
+  // UTC-02
+  { value: 'America/Noronha', label: '(UTC-02:00) Mid-Atlantic', offset: -2 },
+  { value: 'Atlantic/South_Georgia', label: '(UTC-02:00) South Georgia', offset: -2 },
+  
+  // UTC-01
+  { value: 'Atlantic/Azores', label: '(UTC-01:00) Azores', offset: -1 },
+  { value: 'Atlantic/Cape_Verde', label: '(UTC-01:00) Cape Verde Islands', offset: -1 },
+  
+  // UTC+00
+  { value: 'Europe/London', label: '(UTC+00:00) London, Dublin, Lisbon', offset: 0 },
+  { value: 'Europe/Lisbon', label: '(UTC+00:00) Lisbon', offset: 0 },
+  { value: 'Africa/Casablanca', label: '(UTC+00:00) Casablanca', offset: 0 },
+  { value: 'Atlantic/Reykjavik', label: '(UTC+00:00) Reykjavik', offset: 0 },
+  { value: 'UTC', label: '(UTC+00:00) Coordinated Universal Time', offset: 0 },
+  
+  // UTC+01
+  { value: 'Europe/Paris', label: '(UTC+01:00) Paris, Brussels, Copenhagen, Madrid', offset: 1 },
+  { value: 'Europe/Berlin', label: '(UTC+01:00) Berlin, Rome, Stockholm, Vienna', offset: 1 },
+  { value: 'Europe/Amsterdam', label: '(UTC+01:00) Amsterdam', offset: 1 },
+  { value: 'Europe/Rome', label: '(UTC+01:00) Rome', offset: 1 },
+  { value: 'Africa/Lagos', label: '(UTC+01:00) West Central Africa', offset: 1 },
+  
+  // UTC+02
+  { value: 'Europe/Athens', label: '(UTC+02:00) Athens, Bucharest, Istanbul', offset: 2 },
+  { value: 'Europe/Helsinki', label: '(UTC+02:00) Helsinki, Kiev, Riga, Sofia', offset: 2 },
+  { value: 'Africa/Cairo', label: '(UTC+02:00) Cairo', offset: 2 },
+  { value: 'Africa/Johannesburg', label: '(UTC+02:00) Johannesburg, Pretoria', offset: 2 },
+  { value: 'Asia/Jerusalem', label: '(UTC+02:00) Jerusalem', offset: 2 },
+  
+  // UTC+03
+  { value: 'Europe/Moscow', label: '(UTC+03:00) Moscow, St. Petersburg', offset: 3 },
+  { value: 'Asia/Baghdad', label: '(UTC+03:00) Baghdad', offset: 3 },
+  { value: 'Asia/Kuwait', label: '(UTC+03:00) Kuwait, Riyadh', offset: 3 },
+  { value: 'Africa/Nairobi', label: '(UTC+03:00) Nairobi', offset: 3 },
+  
+  // UTC+03:30
+  { value: 'Asia/Tehran', label: '(UTC+03:30) Tehran', offset: 3.5 },
+  
+  // UTC+04
+  { value: 'Asia/Dubai', label: '(UTC+04:00) Abu Dhabi, Dubai, Muscat', offset: 4 },
+  { value: 'Asia/Baku', label: '(UTC+04:00) Baku', offset: 4 },
+  { value: 'Asia/Tbilisi', label: '(UTC+04:00) Tbilisi', offset: 4 },
+  { value: 'Asia/Yerevan', label: '(UTC+04:00) Yerevan', offset: 4 },
+  
+  // UTC+04:30
+  { value: 'Asia/Kabul', label: '(UTC+04:30) Kabul', offset: 4.5 },
+  
+  // UTC+05
+  { value: 'Asia/Karachi', label: '(UTC+05:00) Islamabad, Karachi', offset: 5 },
+  { value: 'Asia/Tashkent', label: '(UTC+05:00) Tashkent', offset: 5 },
+  
+  // UTC+05:30
+  { value: 'Asia/Kolkata', label: '(UTC+05:30) India (Chennai, Kolkata, Mumbai, New Delhi)', offset: 5.5 },
+  { value: 'Asia/Colombo', label: '(UTC+05:30) Sri Jayawardenepura', offset: 5.5 },
+  
+  // UTC+05:45
+  { value: 'Asia/Kathmandu', label: '(UTC+05:45) Kathmandu', offset: 5.75 },
+  
+  // UTC+06
+  { value: 'Asia/Dhaka', label: '(UTC+06:00) Dhaka', offset: 6 },
+  { value: 'Asia/Almaty', label: '(UTC+06:00) Almaty', offset: 6 },
+  
+  // UTC+06:30
+  { value: 'Asia/Yangon', label: '(UTC+06:30) Yangon (Rangoon)', offset: 6.5 },
+  
+  // UTC+07
+  { value: 'Asia/Bangkok', label: '(UTC+07:00) Bangkok, Hanoi, Jakarta', offset: 7 },
+  { value: 'Asia/Jakarta', label: '(UTC+07:00) Jakarta', offset: 7 },
+  
+  // UTC+08
+  { value: 'Asia/Shanghai', label: '(UTC+08:00) Beijing, Chongqing, Hong Kong, Shanghai', offset: 8 },
+  { value: 'Asia/Singapore', label: '(UTC+08:00) Singapore', offset: 8 },
+  { value: 'Asia/Taipei', label: '(UTC+08:00) Taipei', offset: 8 },
+  { value: 'Australia/Perth', label: '(UTC+08:00) Perth', offset: 8 },
+  { value: 'Asia/Kuala_Lumpur', label: '(UTC+08:00) Kuala Lumpur', offset: 8 },
+  
+  // UTC+09
+  { value: 'Asia/Tokyo', label: '(UTC+09:00) Tokyo, Osaka, Sapporo', offset: 9 },
+  { value: 'Asia/Seoul', label: '(UTC+09:00) Seoul', offset: 9 },
+  
+  // UTC+09:30
+  { value: 'Australia/Adelaide', label: '(UTC+09:30) Adelaide', offset: 9.5 },
+  { value: 'Australia/Darwin', label: '(UTC+09:30) Darwin', offset: 9.5 },
+  
+  // UTC+10
+  { value: 'Australia/Sydney', label: '(UTC+10:00) Sydney, Melbourne, Canberra', offset: 10 },
+  { value: 'Australia/Brisbane', label: '(UTC+10:00) Brisbane', offset: 10 },
+  { value: 'Australia/Hobart', label: '(UTC+10:00) Hobart', offset: 10 },
+  { value: 'Pacific/Guam', label: '(UTC+10:00) Guam, Port Moresby', offset: 10 },
+  
+  // UTC+11
+  { value: 'Pacific/Noumea', label: '(UTC+11:00) Solomon Islands, New Caledonia', offset: 11 },
+  { value: 'Asia/Magadan', label: '(UTC+11:00) Magadan', offset: 11 },
+  
+  // UTC+12
+  { value: 'Pacific/Auckland', label: '(UTC+12:00) Auckland, Wellington', offset: 12 },
+  { value: 'Pacific/Fiji', label: '(UTC+12:00) Fiji, Marshall Islands', offset: 12 },
+  { value: 'Asia/Kamchatka', label: '(UTC+12:00) Kamchatka', offset: 12 },
+  
+  // UTC+13
+  { value: 'Pacific/Tongatapu', label: '(UTC+13:00) Nuku\'alofa', offset: 13 },
+  { value: 'Pacific/Apia', label: '(UTC+13:00) Samoa', offset: 13 },
+  
+  // UTC+14
+  { value: 'Pacific/Kiritimati', label: '(UTC+14:00) Kiritimati Island', offset: 14 },
 ];
 
 const TIMER_DURATIONS = [
@@ -39,16 +188,111 @@ const TIMER_DURATIONS = [
   { value: 3600, label: '1 hour' },
 ];
 
+interface CityResult {
+  name: string;
+  country: string;
+  state?: string;
+  lat: number;
+  lon: number;
+}
+
 export default function ClockSettings({ settings, onUpdate, isSaving }: ClockSettingsProps) {
   const [showSeconds, setShowSeconds] = useState(settings.clockShowSeconds);
   const [timezone, setTimezone] = useState(settings.clockTimezone);
+  const [weatherLocation, setWeatherLocation] = useState(settings.clockWeatherLocation || 'Bengaluru,IN');
   const [timerDuration, setTimerDuration] = useState(settings.timerDefaultDuration);
   const [timerSound, setTimerSound] = useState(settings.timerSoundEnabled);
+  
+  // Autocomplete state
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [citySuggestions, setCitySuggestions] = useState<CityResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const locationInputRef = useRef<HTMLInputElement>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // OpenWeather API Key
+  const OPENWEATHER_API_KEY = 'a3418c431a042bf88b50016c0204f927';
+
+  // Search cities using OpenWeather Geocoding API
+  const searchCities = async (query: string) => {
+    if (query.length < 2) {
+      setCitySuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    setIsSearching(true);
+    
+    try {
+      const response = await fetch(
+        `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(query)}&limit=10&appid=${OPENWEATHER_API_KEY}`
+      );
+      
+      if (response.ok) {
+        const data: CityResult[] = await response.json();
+        setCitySuggestions(data);
+        setShowSuggestions(data.length > 0);
+      }
+    } catch (error) {
+      console.error('Failed to fetch cities:', error);
+      setCitySuggestions([]);
+      setShowSuggestions(false);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // Handle location input change with debounce
+  const handleLocationChange = (value: string) => {
+    setWeatherLocation(value);
+    
+    // Clear previous timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    
+    // Set new timeout for API call (300ms delay)
+    searchTimeoutRef.current = setTimeout(() => {
+      searchCities(value);
+    }, 300);
+  };
+
+  // Select city from suggestions
+  const selectCity = (city: CityResult) => {
+    const locationString = `${city.name},${city.country}`;
+    setWeatherLocation(locationString);
+    setShowSuggestions(false);
+    setCitySuggestions([]);
+  };
+
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        locationInputRef.current &&
+        suggestionsRef.current &&
+        !locationInputRef.current.contains(event.target as Node) &&
+        !suggestionsRef.current.contains(event.target as Node)
+      ) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleSave = async () => {
     await onUpdate({
       clockShowSeconds: showSeconds,
       clockTimezone: timezone,
+      clockWeatherLocation: weatherLocation,
       timerDefaultDuration: timerDuration,
       timerSoundEnabled: timerSound,
     });
@@ -57,6 +301,7 @@ export default function ClockSettings({ settings, onUpdate, isSaving }: ClockSet
   const hasChanges = 
     showSeconds !== settings.clockShowSeconds ||
     timezone !== settings.clockTimezone ||
+    weatherLocation !== (settings.clockWeatherLocation || 'Bengaluru,IN') ||
     timerDuration !== settings.timerDefaultDuration ||
     timerSound !== settings.timerSoundEnabled;
 
@@ -209,6 +454,178 @@ export default function ClockSettings({ settings, onUpdate, isSaving }: ClockSet
           </select>
           <p style={{ fontSize: '11px', color: '#6B7280', marginTop: '4px', marginBottom: 0 }}>
             Current time will be displayed in this timezone
+          </p>
+        </div>
+      </div>
+
+      {/* Weather Settings - WITH OPENWEATHER API SEARCH */}
+      <div style={{
+        backgroundColor: 'white',
+        border: '1px solid #E5E7EB',
+        borderRadius: '12px',
+        padding: '16px',
+        marginBottom: '16px'
+      }}>
+        <h3 style={{ 
+          fontSize: '15px', 
+          fontWeight: '700', 
+          color: '#1F2937', 
+          margin: '0 0 12px 0',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}>
+          <span style={{ fontSize: '18px' }}>🌤️</span>
+          Weather
+        </h3>
+
+        {/* Weather Location with Real-time API Search */}
+        <div style={{ position: 'relative' }}>
+          <label style={{
+            display: 'block',
+            fontSize: '12px',
+            fontWeight: '600',
+            color: '#374151',
+            marginBottom: '6px'
+          }}>
+            Weather Location
+          </label>
+          <div style={{ position: 'relative' }}>
+            <input
+              ref={locationInputRef}
+              type="text"
+              value={weatherLocation}
+              onChange={(e) => handleLocationChange(e.target.value)}
+              placeholder="Type city name..."
+              disabled={isSaving}
+              style={{
+                width: '100%',
+                padding: '8px 36px 8px 12px',
+                fontSize: '13px',
+                border: '1px solid #E5E7EB',
+                borderRadius: '8px',
+                outline: 'none',
+                transition: 'all 0.2s',
+                backgroundColor: isSaving ? '#F9FAFB' : 'white',
+                cursor: isSaving ? 'not-allowed' : 'text'
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = '#F4B000';
+                e.target.style.boxShadow = '0 0 0 2px rgba(244, 176, 0, 0.1)';
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = '#E5E7EB';
+                e.target.style.boxShadow = 'none';
+              }}
+            />
+            
+            {/* Loading Spinner */}
+            {isSearching && (
+              <div style={{
+                position: 'absolute',
+                right: '12px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                fontSize: '12px',
+                color: '#6B7280'
+              }}>
+                🔍
+              </div>
+            )}
+          </div>
+          
+          {/* Autocomplete Suggestions from OpenWeather API */}
+          {showSuggestions && citySuggestions.length > 0 && (
+            <div
+              ref={suggestionsRef}
+              style={{
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                right: 0,
+                marginTop: '4px',
+                backgroundColor: 'white',
+                border: '1px solid #E5E7EB',
+                borderRadius: '8px',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                maxHeight: '300px',
+                overflowY: 'auto',
+                zIndex: 1000
+              }}
+            >
+              {citySuggestions.map((city, index) => (
+                <div
+                  key={index}
+                  onClick={() => selectCity(city)}
+                  style={{
+                    padding: '10px 12px',
+                    fontSize: '13px',
+                    color: '#1F2937',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    borderBottom: index < citySuggestions.length - 1 ? '1px solid #F3F4F6' : 'none'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#F9FAFB';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'white';
+                  }}
+                >
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <div>
+                      <div style={{ fontWeight: '600' }}>
+                        {city.name}
+                        {city.state && `, ${city.state}`}
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#6B7280', marginTop: '2px' }}>
+                        {city.country}
+                      </div>
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#9CA3AF' }}>
+                      {city.lat.toFixed(2)}, {city.lon.toFixed(2)}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          
+          {/* No Results Message */}
+          {showSuggestions && !isSearching && citySuggestions.length === 0 && weatherLocation.length >= 2 && (
+            <div
+              ref={suggestionsRef}
+              style={{
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                right: 0,
+                marginTop: '4px',
+                backgroundColor: 'white',
+                border: '1px solid #E5E7EB',
+                borderRadius: '8px',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                padding: '16px',
+                textAlign: 'center',
+                zIndex: 1000
+              }}
+            >
+              <div style={{ fontSize: '24px', marginBottom: '8px' }}>🔍</div>
+              <div style={{ fontSize: '12px', color: '#6B7280', fontWeight: '600' }}>
+                No cities found
+              </div>
+              <div style={{ fontSize: '11px', color: '#9CA3AF', marginTop: '4px' }}>
+                Try a different search term
+              </div>
+            </div>
+          )}
+          
+          <p style={{ fontSize: '11px', color: '#6B7280', marginTop: '4px', marginBottom: 0 }}>
+            Search for any city worldwide - powered by OpenWeather
           </p>
         </div>
       </div>

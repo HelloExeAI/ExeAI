@@ -2,55 +2,35 @@
 'use client';
 
 import React from 'react';
-import TodoList from './TodoList';
 import EmailModule from '@/components/dashboard/EmailModule';
 import MessengerModule from './MessengerModule';
-import { Note } from '../../app/types';
 
 interface RightSidebarProps {
-  todoItems: Note[];
-  onCompleteTodo: (noteId: string, completed: boolean) => void;
-  onDeleteTodo?: (noteId: string) => void;
   onAddTodo?: (content: string) => void; 
 }
 
 export default function RightSidebar({ 
-  todoItems, 
-  onCompleteTodo, 
-  onDeleteTodo,
   onAddTodo
 }: RightSidebarProps) {
   return (
     <div style={{ 
       height: '100%', 
-      padding: '8px',
+      overflowY: 'auto', 
       backgroundColor: '#FAFAFA', 
-      overflowY: 'auto'
+      padding: '12px'
+      // Width is controlled by the parent grid layout (same as left sidebar)
     }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingBottom: '16px' }}>
-        {/* TodoList Module */}
-        <div>
-          <TodoList 
-            todoItems={todoItems} 
-            onCompleteTodo={onCompleteTodo}
-            onDeleteTodo={onDeleteTodo}
-            onAddTodo={onAddTodo}
-          />
-        </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         
         {/* Email Module */}
-        <div>
-          <EmailModule 
-            onAddTodo={onAddTodo} 
-          />
-        </div>
+        <EmailModule 
+          onAddTodo={onAddTodo} 
+        />
         
         {/* Messenger Module */}
-        <div>
-          <MessengerModule 
-            onAddTodo={onAddTodo} 
-          />
-        </div>
+        <MessengerModule 
+          onAddTodo={onAddTodo} 
+        />
       </div>
     </div>
   );
