@@ -238,7 +238,7 @@ export default function Dashboard() {
       ...todo,
       id: `todo-${Date.now()}`,
       createdAt: new Date(),
-      pageId: currentPage.id  // Fill in the pageId
+      pageId: currentPage.id
     };
 
     setCurrentPage({
@@ -344,7 +344,18 @@ export default function Dashboard() {
           {/* RIGHT SIDEBAR - 208px width (same as left) */}
           <div className="frosted-panel" style={{ width: '208px' }}>
             <RightSidebar 
-              onAddTodo={handleAddTodo}
+              onAddTodo={(content: string) => {
+                handleAddTodo({
+                  content: content,
+                  type: 'todo',
+                  completed: false,
+                  pageId: currentPage?.id || '',
+                  linkedPages: [],
+                  children: [],
+                  parentId: null,
+                  indent: 0
+                });
+              }}
             />
           </div>
         </div>

@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Note } from '@/app/types';
 
 interface Email {
   id: string;
@@ -14,7 +13,7 @@ interface Email {
 }
 
 interface EmailModuleProps {
-  onAddTodo?: (todo: Omit<Note, 'id' | 'createdAt'>) => void;
+  onAddTodo?: (content: string) => void;
 }
 
 export default function EmailModule({ onAddTodo }: EmailModuleProps) {
@@ -84,16 +83,7 @@ export default function EmailModule({ onAddTodo }: EmailModuleProps) {
   
   const handleReplyLater = () => {
     if (selectedEmail && onAddTodo) {
-      onAddTodo({
-        content: `Reply to: ${selectedEmail.from} - ${selectedEmail.subject}`,
-        type: 'todo',
-        completed: false,
-        pageId: '',
-        linkedPages: [],
-        children: [],
-        parentId: null,
-        indent: 0
-      });
+      onAddTodo(`Reply to: ${selectedEmail.from} - ${selectedEmail.subject}`);
       setShowEmailPopup(false);
     }
   };

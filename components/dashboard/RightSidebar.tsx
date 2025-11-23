@@ -3,15 +3,12 @@
 import React from 'react';
 import EmailModule from '@/components/dashboard/EmailModule';
 import MessengerModule from './MessengerModule';
-import { Note } from '@/app/types';
 
 interface RightSidebarProps {
-  onAddTodo?: (todo: Omit<Note, 'id' | 'createdAt'>) => void; 
+  onAddTodo?: (content: string) => void;
 }
 
-export default function RightSidebar({ 
-  onAddTodo
-}: RightSidebarProps) {
+export default function RightSidebar({ onAddTodo }: RightSidebarProps) {
   return (
     <div style={{ 
       height: '100%', 
@@ -22,14 +19,14 @@ export default function RightSidebar({
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         
         {/* Email Module */}
-        <EmailModule 
-          onAddTodo={onAddTodo} 
-        />
+        {/* <EmailModule 
+        onAddTodo={(content: string) => onAddTodo?.(content)} 
+        /> */}
         
         {/* Messenger Module */}
-        <MessengerModule 
-          onAddTodo={onAddTodo} 
-        />
+        {/* <MessengerModule 
+          onAddTodo={(todo: Note) => onAddTodo?.(todo)} 
+        /> */}
       </div>
     </div>
   );
