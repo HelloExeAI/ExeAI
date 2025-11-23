@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { Note } from '@/app/types';
 
 interface Message {
   id: string;
@@ -13,7 +14,7 @@ interface Message {
 }
 
 interface MessengerModuleProps {
-  onAddTodo?: (content: string) => void;
+  onAddTodo?: (todo: Omit<Note, 'id' | 'createdAt'>) => void;
 }
 
 export default function MessengerModule({ onAddTodo }: MessengerModuleProps) {
@@ -83,7 +84,16 @@ export default function MessengerModule({ onAddTodo }: MessengerModuleProps) {
   
   const handleReplyLater = () => {
     if (selectedMessage && onAddTodo) {
-      onAddTodo(`Reply to ${selectedMessage.from} (${selectedMessage.platform})`);
+      onAddTodo({
+        content: `Reply to ${selectedMessage.from} (${selectedMessage.platform})`,
+        type: 'todo',
+        completed: false,
+        pageId: '',
+        linkedPages: [],
+        children: [],
+        parentId: null,
+        indent: 0
+      });
       setShowMessagePopup(false);
     }
   };

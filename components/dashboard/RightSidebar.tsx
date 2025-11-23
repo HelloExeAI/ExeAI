@@ -1,12 +1,12 @@
-// components/dashboard/RightSidebar.tsx
 'use client';
 
 import React from 'react';
 import EmailModule from '@/components/dashboard/EmailModule';
 import MessengerModule from './MessengerModule';
+import { Note } from '@/app/types';
 
 interface RightSidebarProps {
-  onAddTodo?: (content: string) => void; 
+  onAddTodo?: (todo: Omit<Note, 'id' | 'createdAt'>) => void; 
 }
 
 export default function RightSidebar({ 
@@ -18,7 +18,6 @@ export default function RightSidebar({
       overflowY: 'auto', 
       backgroundColor: '#FAFAFA', 
       padding: '12px'
-      // Width is controlled by the parent grid layout (same as left sidebar)
     }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         
