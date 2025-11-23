@@ -5,10 +5,12 @@ import EmailModule from '@/components/dashboard/EmailModule';
 import MessengerModule from './MessengerModule';
 
 interface RightSidebarProps {
-  onAddTodo?: (content: string) => void;
+  onAddTodo?: (content: string) => void; 
 }
 
-export default function RightSidebar({ onAddTodo }: RightSidebarProps) {
+export default function RightSidebar({ 
+  onAddTodo
+}: RightSidebarProps) {
   return (
     <div style={{ 
       height: '100%', 
@@ -19,14 +21,14 @@ export default function RightSidebar({ onAddTodo }: RightSidebarProps) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         
         {/* Email Module */}
-        {/* <EmailModule 
-        onAddTodo={(content: string) => onAddTodo?.(content)} 
-        /> */}
+        <EmailModule 
+          onAddTodo={onAddTodo} 
+        />
         
         {/* Messenger Module */}
-        {/* <MessengerModule 
-          onAddTodo={(todo: Note) => onAddTodo?.(todo)} 
-        /> */}
+        <MessengerModule 
+          onAddTodo={onAddTodo} 
+        />
       </div>
     </div>
   );

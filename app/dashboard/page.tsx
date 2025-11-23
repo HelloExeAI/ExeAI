@@ -230,7 +230,7 @@ export default function Dashboard() {
     }
   };
 
-  // Handle adding a new todo - ACCEPTS FULL NOTE OBJECT
+  // Handle adding a new todo - ACCEPTS FULL NOTE OBJECT (for LeftSidebar)
   const handleAddTodoFromObject = (todo: Omit<Note, 'id' | 'createdAt'>) => {
     if (!currentPage) return;
 
@@ -250,7 +250,7 @@ export default function Dashboard() {
     displayToast("Task added!");
   };
 
-  // Handle adding a new todo - ACCEPTS STRING
+  // Handle adding a new todo - ACCEPTS STRING (for RightSidebar Email/Messenger)
   const handleAddTodoFromString = (content: string) => {
     if (!currentPage) return;
 
