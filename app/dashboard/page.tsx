@@ -230,8 +230,8 @@ export default function Dashboard() {
     }
   };
 
-  // Handle adding a new todo
-  const handleAddTodo = (todo: Omit<Note, 'id' | 'createdAt'>) => {
+  // Handle adding a new todo - ACCEPTS FULL NOTE OBJECT
+  const handleAddTodoFromObject = (todo: Omit<Note, 'id' | 'createdAt'>) => {
     if (!currentPage) return;
 
     const newTodo: Note = {
@@ -239,6 +239,32 @@ export default function Dashboard() {
       id: `todo-${Date.now()}`,
       createdAt: new Date(),
       pageId: currentPage.id
+    };
+
+    setCurrentPage({
+      ...currentPage,
+      notes: [...currentPage.notes, newTodo],
+      lastModified: new Date()
+    });
+
+    displayToast("Task added!");
+  };
+
+  // Handle adding a new todo - ACCEPTS STRING
+  const handleAddTodoFromString = (content: string) => {
+    if (!currentPage) return;
+
+    const newTodo: Note = {
+      id: `todo-${Date.now()}`,
+      content: content,
+      type: 'todo',
+      completed: false,
+      pageId: currentPage.id,
+      linkedPages: [],
+      children: [],
+      parentId: null,
+      indent: 0,
+      createdAt: new Date()
     };
 
     setCurrentPage({
@@ -326,7 +352,7 @@ export default function Dashboard() {
             onDeleteEvent={deleteCalendarEvent}
             onCompleteTodo={handleCompleteTodo}
             onDeleteTodo={handleDeleteTodo}
-            onAddTodo={handleAddTodo}
+            onAddTodo={handleAddTodoFromObject}
             onUpdateTodo={handleUpdateTodo}
           />
         </div>
@@ -344,18 +370,7 @@ export default function Dashboard() {
           {/* RIGHT SIDEBAR - 208px width (same as left) */}
           <div className="frosted-panel" style={{ width: '208px' }}>
             <RightSidebar 
-              onAddTodo={(content: string) => {
-                handleAddTodo({
-                  content: content,
-                  type: 'todo',
-                  completed: false,
-                  pageId: currentPage?.id || '',
-                  linkedPages: [],
-                  children: [],
-                  parentId: null,
-                  indent: 0
-                });
-              }}
+              onAddTodo={handleAddTodoFromString}
             />
           </div>
         </div>
