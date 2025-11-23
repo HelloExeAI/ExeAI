@@ -1,4 +1,3 @@
-// components/workspace/DateNavigation.tsx
 'use client';
 
 import React from 'react';
@@ -8,165 +7,220 @@ interface DateNavigationProps {
   currentDate: Date;
   onPreviousDay: () => void;
   onNextDay: () => void;
-  onToday: () => void;
+  onSearchToggle: () => void;
+  onPagesToggle: () => void;
+  onCalendarToggle: () => void;
 }
 
 export default function DateNavigation({
   currentDate,
   onPreviousDay,
   onNextDay,
-  onToday
+  onSearchToggle,
+  onPagesToggle,
+  onCalendarToggle
 }: DateNavigationProps) {
-  const isTodayDate = isToday(currentDate);
-
   return (
     <div style={{
+      height: '60px',
+      padding: '0 32px',
+      borderBottom: '1px solid #E5E7EB',
+      backgroundColor: 'white',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-between',
-      padding: '16px 24px',
-      background: 'white',
-      borderRadius: '12px',
-      border: '1px solid #E5E7EB',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-      marginBottom: '16px'
+      flexShrink: 0
     }}>
-      {/* Left: Date Display */}
+      {/* Left: Previous Arrow */}
+      <button
+        onClick={onPreviousDay}
+        style={{
+          width: '40px',
+          height: '40px',
+          borderRadius: '8px',
+          border: '1px solid #E5E7EB',
+          background: 'white',
+          color: '#6B7280',
+          fontSize: '18px',
+          cursor: 'pointer',
+          transition: 'all 0.2s',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          outline: 'none'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = '#FEF3C7';
+          e.currentTarget.style.borderColor = '#F4B000';
+          e.currentTarget.style.color = '#92400E';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = 'white';
+          e.currentTarget.style.borderColor = '#E5E7EB';
+          e.currentTarget.style.color = '#6B7280';
+        }}
+      >
+        ←
+      </button>
+
+      {/* Center: Date Display */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
         gap: '12px'
       }}>
-        <div style={{
-          fontSize: '32px',
-          lineHeight: 1
+        <h2 style={{
+          margin: 0,
+          fontSize: '18px',
+          fontWeight: '600',
+          color: '#1F2937',
+          letterSpacing: '-0.01em'
         }}>
-          📅
-        </div>
-        <div>
-          <h2 style={{
-            margin: 0,
-            fontSize: '20px',
+          {formatDateLong(currentDate)}
+        </h2>
+        {isToday(currentDate) && (
+          <span style={{
+            padding: '3px 10px',
+            background: '#FEF3C7',
+            border: '1px solid #F4B000',
+            borderRadius: '12px',
+            fontSize: '10px',
             fontWeight: '700',
-            color: '#1F2937',
-            lineHeight: 1.2
+            color: '#92400E',
+            letterSpacing: '0.05em'
           }}>
-            {formatDateLong(currentDate)}
-          </h2>
-          {isTodayDate && (
-            <div style={{
-              display: 'inline-block',
-              marginTop: '6px',
-              padding: '3px 10px',
-              background: '#FEF3C7',
-              border: '1px solid #F4B000',
-              borderRadius: '12px',
-              fontSize: '11px',
-              fontWeight: '700',
-              color: '#92400E',
-              letterSpacing: '0.05em'
-            }}>
-              TODAY
-            </div>
-          )}
-        </div>
+            TODAY
+          </span>
+        )}
       </div>
 
-      {/* Right: Navigation Buttons */}
-      <div style={{
-        display: 'flex',
-        gap: '8px'
-      }}>
-        {/* Previous Day Button */}
-        <button
-          onClick={onPreviousDay}
-          style={{
-            padding: '10px 16px',
-            borderRadius: '8px',
-            border: '1px solid #E5E7EB',
-            background: 'white',
-            color: '#6B7280',
-            fontSize: '14px',
-            fontWeight: '600',
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            outline: 'none'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = '#F9FAFB';
-            e.currentTarget.style.borderColor = '#D1D5DB';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'white';
-            e.currentTarget.style.borderColor = '#E5E7EB';
-          }}
-          title="Previous day"
-        >
-          <span style={{ fontSize: '16px' }}>←</span>
-          <span>Previous</span>
-        </button>
-
-        {/* Today Button */}
-        {!isTodayDate && (
-          <button
-            onClick={onToday}
-            style={{
-              padding: '10px 20px',
-              borderRadius: '8px',
-              border: '2px solid #F4B000',
-              background: '#FEF3C7',
-              color: '#92400E',
-              fontSize: '14px',
-              fontWeight: '700',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              outline: 'none'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#FDE68A';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = '#FEF3C7';
-            }}
-            title="Go to today"
-          >
-            Today
-          </button>
-        )}
-
-        {/* Next Day Button */}
+      {/* Right: Next Arrow + Icons */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
         <button
           onClick={onNextDay}
           style={{
-            padding: '10px 16px',
+            width: '40px',
+            height: '40px',
             borderRadius: '8px',
             border: '1px solid #E5E7EB',
             background: 'white',
             color: '#6B7280',
-            fontSize: '14px',
-            fontWeight: '600',
+            fontSize: '18px',
             cursor: 'pointer',
             transition: 'all 0.2s',
             display: 'flex',
             alignItems: 'center',
-            gap: '6px',
+            justifyContent: 'center',
             outline: 'none'
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = '#F9FAFB';
-            e.currentTarget.style.borderColor = '#D1D5DB';
+            e.currentTarget.style.background = '#FEF3C7';
+            e.currentTarget.style.borderColor = '#F4B000';
+            e.currentTarget.style.color = '#92400E';
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.background = 'white';
             e.currentTarget.style.borderColor = '#E5E7EB';
+            e.currentTarget.style.color = '#6B7280';
           }}
-          title="Next day"
         >
-          <span>Next</span>
-          <span style={{ fontSize: '16px' }}>→</span>
+          →
+        </button>
+
+        {/* Calendar Icon */}
+        <button
+          onClick={onCalendarToggle}
+          style={{
+            width: '40px',
+            height: '40px',
+            borderRadius: '8px',
+            border: '1px solid #E5E7EB',
+            background: 'white',
+            color: '#6B7280',
+            fontSize: '18px',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            outline: 'none'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = '#FEF3C7';
+            e.currentTarget.style.borderColor = '#F4B000';
+            e.currentTarget.style.color = '#92400E';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'white';
+            e.currentTarget.style.borderColor = '#E5E7EB';
+            e.currentTarget.style.color = '#6B7280';
+          }}
+        >
+          📅
+        </button>
+
+        {/* Search Icon */}
+        <button
+          onClick={onSearchToggle}
+          style={{
+            width: '40px',
+            height: '40px',
+            borderRadius: '8px',
+            border: '1px solid #E5E7EB',
+            background: 'white',
+            color: '#6B7280',
+            fontSize: '18px',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            outline: 'none'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = '#FEF3C7';
+            e.currentTarget.style.borderColor = '#F4B000';
+            e.currentTarget.style.color = '#92400E';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'white';
+            e.currentTarget.style.borderColor = '#E5E7EB';
+            e.currentTarget.style.color = '#6B7280';
+          }}
+        >
+          🔍
+        </button>
+
+        {/* Pages Icon */}
+        <button
+          onClick={onPagesToggle}
+          style={{
+            width: '40px',
+            height: '40px',
+            borderRadius: '8px',
+            border: '1px solid #E5E7EB',
+            background: 'white',
+            color: '#6B7280',
+            fontSize: '18px',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            outline: 'none'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = '#FEF3C7';
+            e.currentTarget.style.borderColor = '#F4B000';
+            e.currentTarget.style.color = '#92400E';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'white';
+            e.currentTarget.style.borderColor = '#E5E7EB';
+            e.currentTarget.style.color = '#6B7280';
+          }}
+        >
+          📄
         </button>
       </div>
     </div>
