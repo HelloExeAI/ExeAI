@@ -117,7 +117,7 @@ export default function Dashboard() {
       }
     } catch (error) {
       console.error('Failed to delete calendar event:', error);
-      displayToast('Failed to delete event');
+      displayToast('Failed to delete event');   
     }
   };
   
@@ -237,7 +237,8 @@ export default function Dashboard() {
     const newTodo: Note = {
       ...todo,
       id: `todo-${Date.now()}`,
-      createdAt: new Date()
+      createdAt: new Date(),
+      pageId: currentPage.id  // Fill in the pageId
     };
 
     setCurrentPage({
