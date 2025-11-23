@@ -1,84 +1,130 @@
-// app/api/pages/[id]/route.ts
-// Pages API - GET, PATCH, DELETE specific page
+import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth-options';
+import prisma from '@/lib/prisma';    
 
-import { NextRequest, NextResponse } from 'next/server'
-import { getPageById, updatePage, deletePage } from '@/lib/db/pages'
-
-// GET - Get specific page by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    // TODO: Get userId from session
-    const userId = 'mock-user-id'
+    const session = await getServerSession(authOptions);
+    
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
 
-    const page = await getPageById(userId, params.id)
+    const params = await context.params;
+    const { id } = params;
+
+    const page = await prisma.page.findUnique({
+      where: { id }
+    });
 
     if (!page) {
       return NextResponse.json(
         { success: false, error: 'Page not found' },
         { status: 404 }
-      )
+      );
     }
 
-    return NextResponse.json({ success: true, page })
+    return NextResponse.json({
+      success: true,
+      page: {
+        id: page.id,
+        title: page.title,
+        content: page.content,
+        createdAt: page.createdAt,
+        updatedAt: page.updatedAt,
+        userId: page.userId,
+        tags: page.tags || [],
+      }
+    });
+
   } catch (error) {
-    console.error('GET /api/pages/[id] error:', error)
+    console.error('Error fetching page:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch page' },
+      { success: false, error: 'Internal server error' },
       { status: 500 }
-    )
+    );
   }
 }
 
-// PATCH - Update specific page
-export async function PATCH(
+export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    // TODO: Get userId from session
-    const userId = 'mock-user-id'
+    const session = await getServerSession(authOptions);
+    
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
 
-    const body = await request.json()
-    const { title, content, tags, linkedPages } = body
+    const params = await context.params;
+    const { id } = params;
+    const body = await request.json();
 
-    const updateData: any = {}
-    if (title !== undefined) updateData.title = title
-    if (content !== undefined) updateData.content = content
-    if (tags !== undefined) updateData.tags = tags
-    if (linkedPages !== undefined) updateData.linkedPages = linkedPages
+    const page = await prisma.page.update({
+      where: { id },
+      data: {
+        title: body.title,
+        content: body.content,
+        tags: body.tags,
+        updatedAt: new Date()
+      }
+    });
 
-    const page = await updatePage(userId, params.id, updateData)
+    return NextResponse.json({
+      success: true,
+      page
+    });
 
-    return NextResponse.json({ success: true, page })
   } catch (error) {
-    console.error('PATCH /api/pages/[id] error:', error)
+    console.error('Error updating page:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to update page' },
+      { success: false, error: 'Internal server error' },
       { status: 500 }
-    )
+    );
   }
 }
 
-// DELETE - Delete specific page
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    // TODO: Get userId from session
-    const userId = 'mock-user-id'
+    const session = await getServerSession(authOptions);
+    
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
 
-    await deletePage(userId, params.id)
+    const params = await context.params;
+    const { id } = params;
 
-    return NextResponse.json({ success: true, message: 'Page deleted' })
+    await prisma.page.delete({
+      where: { id }
+    });
+
+    return NextResponse.json({
+      success: true
+    });
+
   } catch (error) {
-    console.error('DELETE /api/pages/[id] error:', error)
+    console.error('Error deleting page:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to delete page' },
+      { success: false, error: 'Internal server error' },
       { status: 500 }
-    )
+    );
   }
 }
