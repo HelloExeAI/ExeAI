@@ -3,13 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import { UserSettings } from '@/types/settings';
 
-interface WorkspaceSettingsProps {
+export interface WorkspaceSettingsProps {
   settings: UserSettings;
   onUpdate: (updates: Partial<UserSettings>) => Promise<void>;
   isSaving: boolean;
 }
 
-export default function WorkspaceSettings({ settings, onUpdate, isSaving }: WorkspaceSettingsProps) {
+const WorkspaceSettings: React.FC<WorkspaceSettingsProps> = ({ settings, onUpdate, isSaving }) => {
   const [analysisMode, setAnalysisMode] = useState<'manual' | 'automatic' | 'off'>('manual');
 
   useEffect(() => {
@@ -170,4 +170,6 @@ export default function WorkspaceSettings({ settings, onUpdate, isSaving }: Work
       </div>
     </div>
   );
-}
+};
+
+export default WorkspaceSettings;
