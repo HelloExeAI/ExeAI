@@ -37,6 +37,13 @@ model User {
   stripeSubscriptionId  String?   @unique
   stripePriceId         String?
 
+  // Gmail Integration
+  gmailConnected     Boolean   @default(false)
+  gmailEmail         String?
+  gmailAccessToken   String?   @db.Text
+  gmailRefreshToken  String?   @db.Text
+  gmailTokenExpiry   DateTime?
+
   // Relationships
   accounts    Account[]
   sessions    Session[]
