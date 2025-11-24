@@ -4,18 +4,23 @@ import { prisma } from '@/lib/prisma';
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const code = searchParams.get('code');
-  const state = searchParams.get('state'); // This is the user's email
+  const state = searchParams.get('state');
   const error = searchParams.get('error');
 
+  const baseUrl = process.env.NEXTAUTH_URL || 'https://exe-ai-mvif.vercel.app';
+
   if (error) {
-    return NextResponse.redirect(new URL('/dashboard/settings?tab=email&error=access_denied', request.url));
+    console.error('OAuth error:', error);
+    return NextResponse.redirect(new URL(`/dashboard/settings?tab=email&error=access_denied`, baseUrl));
   }
 
   if (!code || !state) {
-    return NextResponse.redirect(new URL('/dashboard/settings?tab=email&error=missing_params', request.url));
+    return NextResponse.redirect(new URL(`/dashboard/settings?tab=email&error=missing_params`, baseUrl));
   }
 
   try {
+    const redirectUri = process.env.GMAIL_REDIRECT_URI || `${baseUrl}/api/gmail/callback`;
+
     // Exchange code for tokens
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
@@ -26,7 +31,7 @@ export async function GET(request: NextRequest) {
         code,
         client_id: process.env.GMAIL_CLIENT_ID!,
         client_secret: process.env.GMAIL_CLIENT_SECRET!,
-        redirect_uri: process.env.GMAIL_REDIRECT_URI || 'https://exe-ai-mvif.vercel.app/api/gmail/callback',
+        redirect_uri: redirectUri,
         grant_type: 'authorization_code',
       }),
     });
@@ -35,7 +40,7 @@ export async function GET(request: NextRequest) {
 
     if (tokens.error) {
       console.error('Token error:', tokens);
-      return NextResponse.redirect(new URL('/dashboard/settings?tab=email&error=token_error', request.url));
+      return NextResponse.redirect(new URL(`/dashboard/settings?tab=email&error=token_error`, baseUrl));
     }
 
     // Get user's Gmail profile
@@ -47,13 +52,20 @@ export async function GET(request: NextRequest) {
 
     const profile = await profileResponse.json();
 
-    // Find user and update their Gmail tokens
+    if (profile.error) {
+      console.error('Profile error:', profile);
+      return NextResponse.redirect(new URL(`/dashboard/settings?tab=email&error=profile_error`, baseUrl));
+    }
+
+    // Find user by email (state contains the user's email)
+    const userEmail = decodeURIComponent(state);
     const user = await prisma.user.findUnique({
-      where: { email: state },
+      where: { email: userEmail },
     });
 
     if (!user) {
-      return NextResponse.redirect(new URL('/dashboard/settings?tab=email&error=user_not_found', request.url));
+      console.error('User not found:', userEmail);
+      return NextResponse.redirect(new URL(`/dashboard/settings?tab=email&error=user_not_found`, baseUrl));
     }
 
     // Update user with Gmail tokens
@@ -61,16 +73,18 @@ export async function GET(request: NextRequest) {
       where: { id: user.id },
       data: {
         gmailAccessToken: tokens.access_token,
-        gmailRefreshToken: tokens.refresh_token,
-        gmailTokenExpiry: new Date(Date.now() + tokens.expires_in * 1000),
+        gmailRefreshToken: tokens.refresh_token || null,
+        gmailTokenExpiry: tokens.expires_in 
+          ? new Date(Date.now() + tokens.expires_in * 1000) 
+          : null,
         gmailConnected: true,
         gmailEmail: profile.emailAddress,
       },
     });
 
-    return NextResponse.redirect(new URL('/dashboard/settings?tab=email&success=gmail_connected', request.url));
+    return NextResponse.redirect(new URL(`/dashboard/settings?tab=email&success=gmail_connected`, baseUrl));
   } catch (error) {
     console.error('Gmail callback error:', error);
-    return NextResponse.redirect(new URL('/dashboard/settings?tab=email&error=server_error', request.url));
+    return NextResponse.redirect(new URL(`/dashboard/settings?tab=email&error=server_error`, baseUrl));
   }
 }
