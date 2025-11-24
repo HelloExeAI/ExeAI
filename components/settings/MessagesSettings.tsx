@@ -6,14 +6,14 @@ import { UserSettings } from '@/types/settings';
 interface MessagesSettingsProps {
   settings: UserSettings;
   onUpdate: (updates: Partial<UserSettings>) => Promise<void>;
+  isSaving: boolean;
 }
 
-export default function MessagesSettings({ settings, onUpdate }: MessagesSettingsProps) {
+export default function MessagesSettings({ settings, onUpdate, isSaving }: MessagesSettingsProps) {
   const [whatsappConnected, setWhatsappConnected] = useState(settings.messageWhatsAppConnected || false);
   const [slackConnected, setSlackConnected] = useState(settings.messageSlackConnected || false);
   const [readReceipts, setReadReceipts] = useState(settings.messageReadReceipts ?? true);
   const [notifications, setNotifications] = useState(settings.messageNotifications ?? true);
-  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     setWhatsappConnected(settings.messageWhatsAppConnected || false);
@@ -26,7 +26,6 @@ export default function MessagesSettings({ settings, onUpdate }: MessagesSetting
     const newStatus = !whatsappConnected;
     setWhatsappConnected(newStatus);
     
-    setIsSaving(true);
     try {
       await onUpdate({
         messageWhatsAppConnected: newStatus,
@@ -35,8 +34,8 @@ export default function MessagesSettings({ settings, onUpdate }: MessagesSetting
       if (newStatus) {
         alert('WhatsApp connected successfully! (Demo mode)\n\nIn production, this will use WhatsApp Web QR code scanning.');
       }
-    } finally {
-      setIsSaving(false);
+    } catch (error) {
+      console.error('Error connecting WhatsApp:', error);
     }
   };
 
@@ -44,7 +43,6 @@ export default function MessagesSettings({ settings, onUpdate }: MessagesSetting
     const newStatus = !slackConnected;
     setSlackConnected(newStatus);
     
-    setIsSaving(true);
     try {
       await onUpdate({
         messageSlackConnected: newStatus,
@@ -53,19 +51,18 @@ export default function MessagesSettings({ settings, onUpdate }: MessagesSetting
       if (newStatus) {
         alert('Slack connected successfully! (Demo mode)\n\nIn production, this will use Slack OAuth.');
       }
-    } finally {
-      setIsSaving(false);
+    } catch (error) {
+      console.error('Error connecting Slack:', error);
     }
   };
 
   const handleDisconnectWhatsApp = async () => {
     if (confirm('Are you sure you want to disconnect WhatsApp?')) {
       setWhatsappConnected(false);
-      setIsSaving(true);
       try {
         await onUpdate({ messageWhatsAppConnected: false });
-      } finally {
-        setIsSaving(false);
+      } catch (error) {
+        console.error('Error disconnecting WhatsApp:', error);
       }
     }
   };
@@ -73,24 +70,22 @@ export default function MessagesSettings({ settings, onUpdate }: MessagesSetting
   const handleDisconnectSlack = async () => {
     if (confirm('Are you sure you want to disconnect Slack?')) {
       setSlackConnected(false);
-      setIsSaving(true);
       try {
         await onUpdate({ messageSlackConnected: false });
-      } finally {
-        setIsSaving(false);
+      } catch (error) {
+        console.error('Error disconnecting Slack:', error);
       }
     }
   };
 
   const handleSave = async () => {
-    setIsSaving(true);
     try {
       await onUpdate({
         messageReadReceipts: readReceipts,
         messageNotifications: notifications,
       });
-    } finally {
-      setIsSaving(false);
+    } catch (error) {
+      console.error('Error saving settings:', error);
     }
   };
 

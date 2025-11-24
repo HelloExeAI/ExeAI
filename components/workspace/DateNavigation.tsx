@@ -7,15 +7,17 @@ interface DateNavigationProps {
   currentDate: Date;
   onPreviousDay: () => void;
   onNextDay: () => void;
-  onSearchToggle: () => void;
-  onPagesToggle: () => void;
-  onCalendarToggle: () => void;
+  onToday?: () => void;
+  onSearchToggle?: () => void;
+  onPagesToggle?: () => void;
+  onCalendarToggle?: () => void;
 }
 
 export default function DateNavigation({
   currentDate,
   onPreviousDay,
   onNextDay,
+  onToday,
   onSearchToggle,
   onPagesToggle,
   onCalendarToggle
@@ -129,7 +131,7 @@ export default function DateNavigation({
 
         {/* Calendar Icon */}
         <button
-          onClick={onCalendarToggle}
+          onClick={() => onCalendarToggle?.()}
           style={{
             width: '40px',
             height: '40px',
@@ -161,7 +163,7 @@ export default function DateNavigation({
 
         {/* Search Icon */}
         <button
-          onClick={onSearchToggle}
+          onClick={() => onSearchToggle?.()}
           style={{
             width: '40px',
             height: '40px',
@@ -193,7 +195,7 @@ export default function DateNavigation({
 
         {/* Pages Icon */}
         <button
-          onClick={onPagesToggle}
+          onClick={() => onPagesToggle?.()}
           style={{
             width: '40px',
             height: '40px',

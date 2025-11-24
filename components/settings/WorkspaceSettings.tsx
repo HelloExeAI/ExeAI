@@ -1,29 +1,31 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { UserSettings } from '@/types/settings';
 
-export default function WorkspaceSettings() {
+interface WorkspaceSettingsProps {
+  settings: UserSettings;
+  onUpdate: (updates: Partial<UserSettings>) => Promise<void>;
+  isSaving: boolean;
+}
+
+export default function WorkspaceSettings({ settings, onUpdate, isSaving }: WorkspaceSettingsProps) {
   const [analysisMode, setAnalysisMode] = useState<'manual' | 'automatic' | 'off'>('manual');
-  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    // Load saved settings
-    const savedMode = localStorage.getItem('aiAnalysisMode');
-    if (savedMode) {
+    // Load saved settings from props or localStorage
+    const savedMode = settings.workspaceThemeMode || localStorage.getItem('aiAnalysisMode');
+    if (savedMode && ['manual', 'automatic', 'off'].includes(savedMode)) {
       setAnalysisMode(savedMode as 'manual' | 'automatic' | 'off');
     }
-  }, []);
+  }, [settings.workspaceThemeMode]);
 
   const handleSave = async () => {
-    setIsSaving(true);
-    
     // Save to localStorage
     localStorage.setItem('aiAnalysisMode', analysisMode);
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    setIsSaving(false);
+    // Update settings via onUpdate prop
+    await onUpdate({ workspaceThemeMode: analysisMode });
   };
 
   return (

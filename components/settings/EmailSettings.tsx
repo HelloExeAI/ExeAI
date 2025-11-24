@@ -7,14 +7,14 @@ import { UserSettings } from '@/types/settings';
 interface EmailSettingsProps {
   settings: UserSettings;
   onUpdate: (updates: Partial<UserSettings>) => Promise<void>;
+  isSaving: boolean;
 }
 
-export default function EmailSettings({ settings, onUpdate }: EmailSettingsProps) {
+export default function EmailSettings({ settings, onUpdate, isSaving }: EmailSettingsProps) {
   const [gmailConnected, setGmailConnected] = useState(settings.emailGmailConnected || false);
   const [outlookConnected, setOutlookConnected] = useState(settings.emailOutlookConnected || false);
   const [signature, setSignature] = useState(settings.emailSignature || '');
   const [notifications, setNotifications] = useState(settings.emailNotifications ?? true);
-  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     setGmailConnected(settings.emailGmailConnected || false);
@@ -27,7 +27,6 @@ export default function EmailSettings({ settings, onUpdate }: EmailSettingsProps
     const newStatus = !gmailConnected;
     setGmailConnected(newStatus);
     
-    setIsSaving(true);
     try {
       await onUpdate({
         emailGmailConnected: newStatus,
@@ -36,8 +35,8 @@ export default function EmailSettings({ settings, onUpdate }: EmailSettingsProps
       if (newStatus) {
         alert('Gmail connected successfully! (Demo mode)');
       }
-    } finally {
-      setIsSaving(false);
+    } catch (error) {
+      console.error('Error connecting Gmail:', error);
     }
   };
 
@@ -45,7 +44,6 @@ export default function EmailSettings({ settings, onUpdate }: EmailSettingsProps
     const newStatus = !outlookConnected;
     setOutlookConnected(newStatus);
     
-    setIsSaving(true);
     try {
       await onUpdate({
         emailOutlookConnected: newStatus,
@@ -54,19 +52,18 @@ export default function EmailSettings({ settings, onUpdate }: EmailSettingsProps
       if (newStatus) {
         alert('Outlook connected successfully! (Demo mode)');
       }
-    } finally {
-      setIsSaving(false);
+    } catch (error) {
+      console.error('Error connecting Outlook:', error);
     }
   };
 
   const handleDisconnectGmail = async () => {
     if (confirm('Are you sure you want to disconnect Gmail?')) {
       setGmailConnected(false);
-      setIsSaving(true);
       try {
         await onUpdate({ emailGmailConnected: false });
-      } finally {
-        setIsSaving(false);
+      } catch (error) {
+        console.error('Error disconnecting Gmail:', error);
       }
     }
   };
@@ -74,24 +71,22 @@ export default function EmailSettings({ settings, onUpdate }: EmailSettingsProps
   const handleDisconnectOutlook = async () => {
     if (confirm('Are you sure you want to disconnect Outlook?')) {
       setOutlookConnected(false);
-      setIsSaving(true);
       try {
         await onUpdate({ emailOutlookConnected: false });
-      } finally {
-        setIsSaving(false);
+      } catch (error) {
+        console.error('Error disconnecting Outlook:', error);
       }
     }
   };
 
   const handleSave = async () => {
-    setIsSaving(true);
     try {
       await onUpdate({
         emailSignature: signature,
         emailNotifications: notifications,
       });
-    } finally {
-      setIsSaving(false);
+    } catch (error) {
+      console.error('Error saving settings:', error);
     }
   };
 

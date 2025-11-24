@@ -278,11 +278,7 @@ export default function Dashboard() {
             />
           </div>
           <div className="frosted-panel" style={{ width: '160px' }}>
-            <RightSidebar 
-              todoItems={todoItems}
-              onCompleteTodo={handleCompleteTodo}
-              onDeleteTodo={handleDeleteTodo}
-            />
+            <RightSidebar />
           </div>
         </div>
       </div>
