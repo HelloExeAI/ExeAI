@@ -31,13 +31,6 @@ export default function SettingsPage() {
     }
   }, [status, router]);
 
-  // Fetch settings on mount
-  useEffect(() => {
-    if (status === 'authenticated') {
-      fetchSettings();
-    }
-  }, [status]);
-
   const fetchSettings = async () => {
     try {
       setLoading(true);
@@ -46,7 +39,8 @@ export default function SettingsPage() {
         const data = await response.json();
         setSettings(data);
       } else {
-        console.error('Failed to fetch settings');
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Failed to fetch settings:', response.status, errorData);
         displayToast('Failed to load settings', 'error');
       }
     } catch (error) {
@@ -56,6 +50,14 @@ export default function SettingsPage() {
       setLoading(false);
     }
   };
+
+  // Fetch settings on mount
+  useEffect(() => {
+    if (status === 'authenticated') {
+      fetchSettings();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
 
   const handleUpdateSettings = async (updates: Partial<UserSettings>) => {
     try {
@@ -106,8 +108,8 @@ export default function SettingsPage() {
     );
   }
 
-  // Error state
-  if (!settings) {
+  // Error state - only show if loading is complete and settings is still null
+  if (!loading && !settings) {
     return (
       <div style={{
         display: 'flex',

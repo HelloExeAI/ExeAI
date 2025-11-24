@@ -37,9 +37,16 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(user.settings);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching settings:', error);
-    return NextResponse.json({ error: 'Failed to fetch settings' }, { status: 500 });
+    // Provide more detailed error information
+    const errorMessage = error?.message || 'Failed to fetch settings';
+    const errorName = error?.name || 'UnknownError';
+    return NextResponse.json({ 
+      error: 'Failed to fetch settings',
+      details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
+      errorType: errorName
+    }, { status: 500 });
   }
 }
 
@@ -86,8 +93,14 @@ export async function PATCH(request: NextRequest) {
     }
 
     return NextResponse.json(updatedSettings);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating settings:', error);
-    return NextResponse.json({ error: 'Failed to update settings' }, { status: 500 });
+    const errorMessage = error?.message || 'Failed to update settings';
+    const errorName = error?.name || 'UnknownError';
+    return NextResponse.json({ 
+      error: 'Failed to update settings',
+      details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
+      errorType: errorName
+    }, { status: 500 });
   }
 }
