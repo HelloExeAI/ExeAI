@@ -107,7 +107,7 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
 
   // Auto-save functionality
   const autoSaveToAPI = useRef(
-    debounce(async (pageTitle: string, content: string) => {
+    debounce(async (date: Date, content: string) => {
       // Only save if there's actual content
       if (!content.trim()) {
         setSaveStatus('saved');
@@ -117,7 +117,7 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
       setSaveStatus('saving');
 
       try {
-        const dateStr = formatDateAPI(currentDate);
+        const dateStr = formatDateAPI(date);
 
         const response = await fetch('/api/daily-note', {
           method: 'POST',
@@ -150,12 +150,38 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
 
       if (hasContent) {
         const contentStr = JSON.stringify(currentPage.notes);
-        autoSaveToAPI(currentPage.title, contentStr);
-      } else {
-        setSaveStatus('saved');
+        autoSaveToAPI(currentDate, contentStr);
       }
     }
-  }, [currentPage, autoSaveToAPI]);
+  }, [currentPage, autoSaveToAPI, currentDate]);
+
+  // Reliable focus management
+  useEffect(() => {
+    if (focusedNoteId && editRefs.current[focusedNoteId]) {
+      const el = editRefs.current[focusedNoteId];
+      // Only focus if we lost focus (e.g. render update) or explicitly asked
+      if (document.activeElement !== el) {
+        el.focus();
+        // Move caret to end
+        const range = document.createRange();
+        const sel = window.getSelection();
+        if (el.childNodes.length > 0) {
+          // If we have text node
+          const lastNode = el.childNodes[el.childNodes.length - 1];
+          range.setStart(lastNode, lastNode.textContent?.length || 0);
+          range.collapse(true);
+          sel?.removeAllRanges();
+          sel?.addRange(range);
+        } else {
+          // Empty div
+          range.setStart(el, 0);
+          range.collapse(true);
+          sel?.removeAllRanges();
+          sel?.addRange(range);
+        }
+      }
+    }
+  }, [focusedNoteId, currentPage]);
 
   const handlePreviousDay = () => {
     setCurrentDate(getPreviousDay(currentDate));
@@ -660,7 +686,7 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
           <div
             ref={(el) => {
               editRefs.current[note.id] = el;
-              if (el && el.textContent !== note.content) {
+              if (el && document.activeElement !== el && el.textContent !== note.content) {
                 el.textContent = note.content;
               }
             }}
