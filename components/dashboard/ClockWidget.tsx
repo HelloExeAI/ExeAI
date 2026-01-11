@@ -67,13 +67,14 @@ export default function ClockWidget() {
   useEffect(() => {
     const fetchWeather = async () => {
       const API_KEY = 'a3418c431a042bf88b50016c0204f927';
-      
+      const city = getCityFromTimezone(settings.timezone);
+
       try {
         const response = await fetch(
-          `https://api.openweathermap.org/data/2.5/weather?q=${settings.location}&appid=${API_KEY}&units=metric`
+          `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${API_KEY}&units=metric`
         );
         const data = await response.json();
-        
+
         if (data.main) {
           setWeather({
             temp: Math.round(data.main.temp),
@@ -92,7 +93,20 @@ export default function ClockWidget() {
       const interval = setInterval(fetchWeather, 600000);
       return () => clearInterval(interval);
     }
-  }, [settings.location, settingsLoaded]);
+  }, [settings.timezone, settingsLoaded]);
+
+  const getCityFromTimezone = (timezone: string): string => {
+    if (!timezone || timezone === 'UTC') return 'London';
+
+    // Handle "Region/City" format
+    const parts = timezone.split('/');
+    if (parts.length > 1) {
+      // Clean up city name (e.g., "New_York" -> "New York")
+      return parts[parts.length - 1].replace(/_/g, ' ');
+    }
+
+    return 'London'; // Default fallback
+  };
 
   const getWeatherIcon = (condition: string): string => {
     switch (condition.toLowerCase()) {
@@ -108,35 +122,64 @@ export default function ClockWidget() {
     }
   };
 
-  const getLocalTime = (): Date => {
-    if (!weather?.timezone) {
-      return new Date();
-    }
-    
+  // Time update effect
+  useEffect(() => {
+    // Update immediately
+    updateTime();
+
+    // Then every second
+    const timer = setInterval(updateTime, 1000);
+    return () => clearInterval(timer);
+  }, [settings.timezone]);
+
+  const updateTime = () => {
+    // Current UTC time
     const now = new Date();
-    const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
-    const localTime = new Date(utcTime + (weather.timezone * 1000));
-    
-    return localTime;
+
+    // Format options for the target timezone
+    const timeOptions: Intl.DateTimeFormatOptions = {
+      timeZone: settings.timezone,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: settings.showSeconds ? '2-digit' : undefined,
+      hour12: true
+    };
+
+    // Format options for 24h hour extraction (for gradient/weather text)
+    const hourOptions: Intl.DateTimeFormatOptions = {
+      timeZone: settings.timezone,
+      hour: 'numeric',
+      hour12: false
+    };
+
+    try {
+      const timeStr = new Intl.DateTimeFormat('en-US', timeOptions).format(now);
+      const hourStr = new Intl.DateTimeFormat('en-US', hourOptions).format(now);
+      const hour = parseInt(hourStr);
+
+      setDisplayTime(timeStr);
+      setCurrentHour(hour);
+    } catch (e) {
+      // Fallback to local time if timezone is invalid
+      console.error('Invalid timezone:', settings.timezone);
+      const fallbackTime = now.toLocaleTimeString();
+      setDisplayTime(fallbackTime);
+      setCurrentHour(now.getHours());
+    }
   };
 
-  const [localTime, setLocalTime] = useState(getLocalTime());
-  
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setLocalTime(getLocalTime());
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [weather?.timezone]);
+  const [displayTime, setDisplayTime] = useState('');
+  const [currentHour, setCurrentHour] = useState(new Date().getHours());
 
-  const getWeatherConditionText = (condition: string, localTime: Date): string => {
-    const hours = localTime.getHours();
-    const isNight = hours >= 19 || hours < 6;
-    
-    if (isNight) return 'Night';
-    
+  // We don't need getLocalTime shift hack anymore
+
+  const getWeatherConditionText = (condition: string, hour: number): string => {
+    const isNight = hour >= 19 || hour < 6;
+
+    if (isNight && ['clear', 'clouds'].includes(condition?.toLowerCase())) return 'Night';
+
     switch (condition?.toLowerCase()) {
-      case 'clear': return 'Sunny';
+      case 'clear': return isNight ? 'Clear' : 'Sunny';
       case 'clouds': return 'Cloudy';
       case 'rain': return 'Rainy';
       case 'drizzle': return 'Drizzling';
@@ -148,14 +191,13 @@ export default function ClockWidget() {
     }
   };
 
-  const getWeatherGradient = (condition: string, localTime: Date): string => {
-    const hours = localTime.getHours();
-    const isNight = hours >= 19 || hours < 6;
-    
+  const getWeatherGradient = (condition: string, hour: number): string => {
+    const isNight = hour >= 19 || hour < 6;
+
     if (isNight) {
       return 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)';
     }
-    
+
     switch (condition?.toLowerCase()) {
       case 'clear':
         return 'linear-gradient(135deg, #FFA726 0%, #FB8C00 100%)';
@@ -176,33 +218,16 @@ export default function ClockWidget() {
     }
   };
 
-  const formatTime = (date: Date) => {
-    const hours = date.getHours();
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    const seconds = date.getSeconds().toString().padStart(2, '0');
-    
-    const displayHours = hours % 12 || 12;
-    const period = hours >= 12 ? 'PM' : 'AM';
-    
-    const timeStr = settings.showSeconds 
-      ? `${displayHours}:${minutes}:${seconds}`
-      : `${displayHours}:${minutes}`;
-    
-    return {
-      time: timeStr,
-      period
-    };
-  };
+  const [timeStr, period] = displayTime.split(' '); // Split "10:30 PM"
 
-  const primaryTime = formatTime(localTime);
 
   return (
     <>
       {/* Clock Widget - Compact */}
       <div style={{ position: 'relative' }}>
-        <div 
-          style={{ 
-            background: getWeatherGradient(weather?.condition || 'clear', localTime),
+        <div
+          style={{
+            background: getWeatherGradient(weather?.condition || 'clear', currentHour),
             borderRadius: '10px',
             padding: '0 14px',
             color: 'white',
@@ -217,54 +242,54 @@ export default function ClockWidget() {
           }}
         >
           {/* Content */}
-          <div style={{ 
-            position: 'relative', 
-            zIndex: 1, 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '14px', 
-            width: '100%' 
+          <div style={{
+            position: 'relative',
+            zIndex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '14px',
+            width: '100%'
           }}>
             {/* Location */}
-            <div style={{ 
-              fontSize: '8px', 
-              fontWeight: '700', 
-              letterSpacing: '0.05em', 
+            <div style={{
+              fontSize: '8px',
+              fontWeight: '700',
+              letterSpacing: '0.05em',
               opacity: 0.85,
               textTransform: 'uppercase',
               minWidth: '55px'
             }}>
               {settings.location.split(',')[0]}
             </div>
-            
+
             {/* Time Display */}
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'baseline', 
+            <div style={{
+              display: 'flex',
+              alignItems: 'baseline',
               gap: '4px',
               minWidth: settings.showSeconds ? '110px' : '75px'
             }}>
-              <span style={{ 
-                fontSize: '18px', 
-                fontWeight: '600', 
+              <span style={{
+                fontSize: '18px',
+                fontWeight: '600',
                 lineHeight: 1,
                 letterSpacing: '-0.02em'
               }}>
-                {primaryTime.time}
+                {timeStr}
               </span>
-              <span style={{ 
-                fontSize: '11px', 
-                fontWeight: '600', 
+              <span style={{
+                fontSize: '11px',
+                fontWeight: '600',
                 opacity: 0.9
               }}>
-                {primaryTime.period}
+                {period}
               </span>
             </div>
 
             {/* Weather Info */}
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
               gap: '10px',
               borderLeft: '1px solid rgba(255,255,255,0.25)',
               paddingLeft: '12px',
@@ -274,34 +299,34 @@ export default function ClockWidget() {
                 <span style={{ fontSize: '14px', fontWeight: '700', lineHeight: 1 }}>
                   {weather?.temp || '--'}°C
                 </span>
-                <span style={{ 
-                  fontSize: '9px', 
-                  opacity: 0.85, 
-                  textTransform: 'uppercase', 
-                  letterSpacing: '0.03em', 
-                  fontWeight: '600' 
+                <span style={{
+                  fontSize: '9px',
+                  opacity: 0.85,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.03em',
+                  fontWeight: '600'
                 }}>
-                  {getWeatherConditionText(weather?.condition || 'clear', localTime)}
+                  {getWeatherConditionText(weather?.condition || 'clear', currentHour)}
                 </span>
               </div>
             </div>
 
             {/* Divider */}
-            <div style={{ 
-              width: '1px', 
-              height: '22px', 
+            <div style={{
+              width: '1px',
+              height: '22px',
               background: 'rgba(255,255,255,0.25)',
               marginLeft: 'auto'
             }}></div>
 
             {/* Timer Button */}
-            <button 
+            <button
               onClick={() => setShowTimer(true)}
-              style={{ 
-                background: 'rgba(255,255,255,0.2)', 
-                border: 'none', 
-                color: 'white', 
-                cursor: 'pointer', 
+              style={{
+                background: 'rgba(255,255,255,0.2)',
+                border: 'none',
+                color: 'white',
+                cursor: 'pointer',
                 fontSize: '14px',
                 width: '28px',
                 height: '28px',

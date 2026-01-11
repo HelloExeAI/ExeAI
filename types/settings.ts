@@ -100,16 +100,10 @@ export const DEFAULT_USER_SETTINGS: Partial<UserSettings> = {
   todoRemindersEnabled: true,
 
   // Email
-  emailGmailConnected: false,
-  emailOutlookConnected: false,
   emailSignature: null,
   emailNotifications: true,
 
-  // Messages
-  messageWhatsAppConnected: false,
-  messageSMSConnected: false,
-  messageTeamsConnected: false,
-  messageSlackConnected: false,
+  // Message
   messageReadReceipts: true,
   messageNotifications: true,
 

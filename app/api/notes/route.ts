@@ -8,7 +8,7 @@ import prisma from '@/lib/prisma';
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session || !session.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
       // Get or create daily note for specific date
       const startOfDay = new Date(date);
       startOfDay.setHours(0, 0, 0, 0);
-      
+
       const endOfDay = new Date(date);
       endOfDay.setHours(23, 59, 59, 999);
 
@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session || !session.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -116,16 +116,15 @@ export async function POST(request: NextRequest) {
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
-
     const body = await request.json();
-    const { 
-      content, 
-      type, 
-      dailyNoteId, 
-      parentId, 
-      indent, 
+    const {
+      content,
+      type,
+      dailyNoteId,
+      parentId,
+      indent,
       completed,
-      linkedPages 
+      linkedPages
     } = body;
 
     // Validate required fields

@@ -1,14 +1,14 @@
 // src/app/dashboard/settings/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';      
+import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import SettingsLayout from '@/components/settings/SettingsLayout';
 import CalendarSettings from '@/components/settings/CalendarSettings';
 import ClockSettings from '@/components/settings/ClockSettings';
 import WorkspaceSettings from '@/components/settings/WorkspaceSettings';
-import TodoSettings from '@/components/settings/TodoSettings';    
+import TodoSettings from '@/components/settings/TodoSettings';
 import EmailSettings from '@/components/settings/EmailSettings';
 import MessagesSettings from '@/components/settings/MessagesSettings';
 import PreferencesSettings from '@/components/settings/PreferencesSettings';
@@ -148,8 +148,8 @@ export default function SettingsPage() {
       <SettingsLayout currentTab={currentTab} onTabChange={setCurrentTab}>
         {/* Calendar Settings Tab */}
         {currentTab === 'calendar' && (
-          <CalendarSettings 
-            settings={settings} 
+          <CalendarSettings
+            settings={settings!}
             onUpdate={handleUpdateSettings}
             isSaving={isSaving}
           />
@@ -157,8 +157,8 @@ export default function SettingsPage() {
 
         {/* Clock Settings Tab */}
         {currentTab === 'clock' && (
-          <ClockSettings 
-            settings={settings} 
+          <ClockSettings
+            settings={settings!}
             onUpdate={handleUpdateSettings}
             isSaving={isSaving}
           />
@@ -166,8 +166,8 @@ export default function SettingsPage() {
 
         {/* Workspace Settings Tab */}
         {currentTab === 'workspace' && (
-          <WorkspaceSettings 
-            settings={settings} 
+          <WorkspaceSettings
+            settings={settings!}
             onUpdate={handleUpdateSettings}
             isSaving={isSaving}
           />
@@ -175,8 +175,8 @@ export default function SettingsPage() {
 
         {/* Todo Settings Tab */}
         {currentTab === 'todos' && (
-          <TodoSettings 
-            settings={settings} 
+          <TodoSettings
+            settings={settings!}
             onUpdate={handleUpdateSettings}
             isSaving={isSaving}
           />
@@ -184,8 +184,8 @@ export default function SettingsPage() {
 
         {/* Email Settings Tab */}
         {currentTab === 'email' && (
-          <EmailSettings 
-            settings={settings} 
+          <EmailSettings
+            settings={settings!}
             onUpdate={handleUpdateSettings}
             isSaving={isSaving}
           />
@@ -193,8 +193,8 @@ export default function SettingsPage() {
 
         {/* Messages Settings Tab */}
         {currentTab === 'messages' && (
-          <MessagesSettings 
-            settings={settings} 
+          <MessagesSettings
+            settings={settings!}
             onUpdate={handleUpdateSettings}
             isSaving={isSaving}
           />
@@ -202,8 +202,8 @@ export default function SettingsPage() {
 
         {/* Preferences Tab */}
         {currentTab === 'preferences' && (
-          <PreferencesSettings 
-            settings={settings} 
+          <PreferencesSettings
+            settings={settings!}
             onUpdate={handleUpdateSettings}
             isSaving={isSaving}
           />

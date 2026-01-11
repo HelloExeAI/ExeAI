@@ -1,178 +1,130 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
+import { getGmailClient } from '@/lib/google-auth';
 import prisma from '@/lib/prisma';
 
-async function refreshAccessToken(user: any) {
-  if (!user.gmailRefreshToken) {
-    return null;
-  }
-
-  try {
-    const response = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        client_id: process.env.GMAIL_CLIENT_ID!,
-        client_secret: process.env.GMAIL_CLIENT_SECRET!,
-        refresh_token: user.gmailRefreshToken,
-        grant_type: 'refresh_token',
-      }),
-    });
-
-    const tokens = await response.json();
-
-    if (tokens.error) {
-      console.error('Token refresh error:', tokens);
-      return null;
-    }
-
-    if (tokens.access_token) {
-      await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          gmailAccessToken: tokens.access_token,
-          gmailTokenExpiry: new Date(Date.now() + tokens.expires_in * 1000),
-        },
-      });
-      return tokens.access_token;
-    }
-
-    return null;
-  } catch (error) {
-    console.error('Token refresh failed:', error);
-    return null;
-  }
-}
-
 export async function GET() {
+  const session = await getServerSession(authOptions);
+
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-    }
-
+    // Get User ID
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
+      select: { id: true }
     });
 
-    if (!user?.gmailConnected || !user?.gmailAccessToken) {
-      return NextResponse.json({ error: 'Gmail not connected' }, { status: 400 });
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    let accessToken = user.gmailAccessToken;
+    const gmail = await getGmailClient(user.id);
 
-    // Check if token is expired and refresh if needed
-    if (user.gmailTokenExpiry && new Date() > user.gmailTokenExpiry) {
-      const newToken = await refreshAccessToken(user);
-      if (!newToken) {
-        // Mark as disconnected if refresh fails
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { gmailConnected: false },
-        });
-        return NextResponse.json({ error: 'Failed to refresh token' }, { status: 401 });
-      }
-      accessToken = newToken;
-    }
+    // 1. List messages (unread first, or just inbox)
+    // q: 'is:unread in:inbox' to get unread
+    // or just 'in:inbox' for all
+    // Let's get unread first as user requested "fetch emails" usually implies seeing new stuff
+    // But UI shows "unreadEmails.length > 0", so maybe we fetch all recent and filter?
+    // The UI filters `emails.filter(e => !e.read)`. So let's fetch recent inbox.
+    const listRes = await gmail.users.messages.list({
+      userId: 'me',
+      q: 'in:inbox',
+      maxResults: 10,
+    });
 
-    // Fetch emails from Gmail API
-    const response = await fetch(
-      'https://www.googleapis.com/gmail/v1/users/me/messages?maxResults=20&labelIds=INBOX',
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      }
-    );
+    const messages = listRes.data.messages || [];
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Gmail API error:', errorData);
-      return NextResponse.json({ error: 'Failed to fetch emails from Gmail' }, { status: 500 });
-    }
-
-    const data = await response.json();
-
-    if (!data.messages || data.messages.length === 0) {
+    if (messages.length === 0) {
       return NextResponse.json([]);
     }
 
-    // Fetch details for each email (limit to 10 for performance)
-    const emailPromises = data.messages.slice(0, 10).map(async (msg: any) => {
-      try {
-        const emailResponse = await fetch(
-          `https://www.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=full`,
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-            },
-          }
-        );
+    // 2. Fetch details for each message
+    const emails = await Promise.all(
+      messages.map(async (msg) => {
+        try {
+          const detail = await gmail.users.messages.get({
+            userId: 'me',
+            id: msg.id!,
+            format: 'full',
+          });
 
-        if (!emailResponse.ok) {
+          const payload = detail.data.payload;
+          const headers = payload?.headers;
+
+          const getHeader = (name: string) => headers?.find(h => h.name === name)?.value || '';
+
+          const from = getHeader('From');
+          const subject = getHeader('Subject');
+          const dateStr = getHeader('Date');
+          const date = new Date(dateStr);
+
+          // Determine snippet/body
+          let content = detail.data.snippet || ''; // Default to snippet
+
+          // Try to find HTML body
+          // This is a simplified traversal. Gmail structure can be complex (multipart/alternative inside multipart/mixed etc)
+          const findBody = (parts: any[]): string | null => {
+            if (!parts) return null;
+            // Prefer HTML
+            const htmlPart = parts.find(p => p.mimeType === 'text/html');
+            if (htmlPart && htmlPart.body?.data) {
+              return Buffer.from(htmlPart.body.data, 'base64').toString('utf-8');
+            }
+            // Fallback to plain text
+            const textPart = parts.find(p => p.mimeType === 'text/plain');
+            if (textPart && textPart.body?.data) {
+              return Buffer.from(textPart.body.data, 'base64').toString('utf-8');
+            }
+            // Recurse
+            for (const part of parts) {
+              if (part.parts) {
+                const found = findBody(part.parts);
+                if (found) return found;
+              }
+            }
+            return null;
+          };
+
+          const fullBody = findBody(payload?.parts || []);
+          if (fullBody) content = fullBody;
+
+          return {
+            id: msg.id,
+            from,
+            subject,
+            preview: detail.data.snippet, // Keep preview separate
+            date: date,
+            content: content, // Full content for popup
+            read: !detail.data.labelIds?.includes('UNREAD'),
+          };
+        } catch (e) {
+          console.error(`Failed to fetch message ${msg.id}`, e);
           return null;
         }
+      })
+    );
 
-        const emailData = await emailResponse.json();
+    return NextResponse.json(emails.filter(e => e !== null));
 
-        const headers = emailData.payload?.headers || [];
-        const getHeader = (name: string) =>
-          headers.find((h: any) => h.name.toLowerCase() === name.toLowerCase())?.value || '';
+  } catch (error: any) {
+    const errorMessage = error.message || '';
+    console.error('API Error:', error);
 
-        const isUnread = emailData.labelIds?.includes('UNREAD');
+    if (errorMessage === 'Gmail not connected' || errorMessage.includes('No access token')) {
+      return NextResponse.json({ error: 'Gmail not connected' }, { status: 400 });
+    }
 
-        // Get email body
-        let body = '';
-        if (emailData.payload?.body?.data) {
-          body = Buffer.from(emailData.payload.body.data, 'base64').toString('utf-8');
-        } else if (emailData.payload?.parts) {
-          // Try to find text/html first, then text/plain
-          const htmlPart = emailData.payload.parts.find((p: any) => p.mimeType === 'text/html');
-          const textPart = emailData.payload.parts.find((p: any) => p.mimeType === 'text/plain');
-          
-          const part = htmlPart || textPart;
-          if (part?.body?.data) {
-            body = Buffer.from(part.body.data, 'base64').toString('utf-8');
-          } else if (part?.parts) {
-            // Handle nested parts
-            const nestedPart = part.parts.find((p: any) => 
-              p.mimeType === 'text/html' || p.mimeType === 'text/plain'
-            );
-            if (nestedPart?.body?.data) {
-              body = Buffer.from(nestedPart.body.data, 'base64').toString('utf-8');
-            }
-          }
-        }
+    if (errorMessage.includes('insufficient authentication scopes') ||
+      errorMessage.includes('Insufficient Permission')) {
+      return NextResponse.json({
+        error: 'Permissions missing. Please disconnect and reconnect Gmail in Settings.'
+      }, { status: 403 });
+    }
 
-        // Convert plain text to HTML if needed
-        if (body && !body.includes('<')) {
-          body = body.replace(/\n/g, '<br>');
-        }
-
-        return {
-          id: emailData.id,
-          from: getHeader('From'),
-          subject: getHeader('Subject'),
-          preview: emailData.snippet || '',
-          content: body || emailData.snippet || '',
-          date: new Date(parseInt(emailData.internalDate)),
-          read: !isUnread,
-        };
-      } catch (error) {
-        console.error('Error fetching email:', msg.id, error);
-        return null;
-      }
-    });
-
-    const emails = (await Promise.all(emailPromises)).filter(Boolean);
-
-    return NextResponse.json(emails);
-  } catch (error) {
-    console.error('Gmail fetch error:', error);
-    return NextResponse.json({ error: 'Failed to fetch emails' }, { status: 500 });
+    return NextResponse.json({ error: errorMessage || 'Internal Server Error' }, { status: 500 });
   }
 }

@@ -29,7 +29,7 @@ export default function CalendarSettings({ settings, onUpdate, isSaving }: Calen
     });
   };
 
-  const hasChanges = 
+  const hasChanges =
     googleConnected !== settings.calendarGoogleConnected ||
     outlookConnected !== settings.calendarOutlookConnected ||
     appleConnected !== settings.calendarAppleConnected ||
@@ -41,18 +41,18 @@ export default function CalendarSettings({ settings, onUpdate, isSaving }: Calen
     <div>
       {/* Compact Header */}
       <div style={{ marginBottom: '20px' }}>
-        <h2 style={{ 
-          fontSize: '20px', 
-          fontWeight: '700', 
-          color: '#1F2937', 
-          margin: '0 0 4px 0' 
+        <h2 style={{
+          fontSize: '20px',
+          fontWeight: '700',
+          color: '#1F2937',
+          margin: '0 0 4px 0'
         }}>
           Calendar Settings
         </h2>
-        <p style={{ 
-          fontSize: '13px', 
-          color: '#6B7280', 
-          margin: 0 
+        <p style={{
+          fontSize: '13px',
+          color: '#6B7280',
+          margin: 0
         }}>
           Connect external calendars and customize preferences
         </p>
@@ -66,18 +66,18 @@ export default function CalendarSettings({ settings, onUpdate, isSaving }: Calen
         padding: '16px',
         marginBottom: '16px'
       }}>
-        <h3 style={{ 
-          fontSize: '15px', 
-          fontWeight: '700', 
-          color: '#1F2937', 
+        <h3 style={{
+          fontSize: '15px',
+          fontWeight: '700',
+          color: '#1F2937',
           margin: '0 0 12px 0'
         }}>
           Connect Calendars
         </h3>
-        <p style={{ 
-          fontSize: '12px', 
-          color: '#6B7280', 
-          margin: '0 0 16px 0' 
+        <p style={{
+          fontSize: '12px',
+          color: '#6B7280',
+          margin: '0 0 16px 0'
         }}>
           Sync your external calendars to view all events in one place
         </p>
@@ -116,22 +116,56 @@ export default function CalendarSettings({ settings, onUpdate, isSaving }: Calen
             </div>
           </div>
           {googleConnected ? (
-            <div style={{
-              padding: '6px 14px',
-              borderRadius: '6px',
-              backgroundColor: '#D1FAE5',
-              color: '#065F46',
-              fontSize: '11px',
-              fontWeight: '600',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px'
-            }}>
-              <span>✓</span> Connected
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{
+                padding: '6px 14px',
+                borderRadius: '6px',
+                backgroundColor: '#D1FAE5',
+                color: '#065F46',
+                fontSize: '11px',
+                fontWeight: '600',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}>
+                <span>✓</span> Connected
+              </div>
+              <button
+                onClick={async () => {
+                  try {
+                    // Update settings to disconnected
+                    setGoogleConnected(false);
+                    await onUpdate({ calendarGoogleConnected: false });
+                  } catch (e) {
+                    console.error('Failed to disconnect', e);
+                  }
+                }}
+                disabled={isSaving}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid #FEE2E2',
+                  backgroundColor: 'white',
+                  color: '#EF4444',
+                  fontSize: '11px',
+                  fontWeight: '600',
+                  cursor: isSaving ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                Disconnect
+              </button>
             </div>
           ) : (
             <button
-              onClick={() => setGoogleConnected(true)}
+              onClick={() => {
+                import('next-auth/react').then(({ signIn }) => {
+                  signIn('google', {
+                    callbackUrl: '/dashboard/settings',
+                    redirect: true,
+                  });
+                });
+              }}
               disabled={isSaving}
               style={{
                 padding: '6px 14px',
@@ -294,18 +328,18 @@ export default function CalendarSettings({ settings, onUpdate, isSaving }: Calen
         padding: '16px',
         marginBottom: '16px'
       }}>
-        <h3 style={{ 
-          fontSize: '15px', 
-          fontWeight: '700', 
-          color: '#1F2937', 
+        <h3 style={{
+          fontSize: '15px',
+          fontWeight: '700',
+          color: '#1F2937',
           margin: '0 0 12px 0'
         }}>
           Calendar Preferences
         </h3>
-        <p style={{ 
-          fontSize: '12px', 
-          color: '#6B7280', 
-          margin: '0 0 16px 0' 
+        <p style={{
+          fontSize: '12px',
+          color: '#6B7280',
+          margin: '0 0 16px 0'
         }}>
           Customize how your calendar displays and behaves
         </p>
@@ -402,10 +436,10 @@ export default function CalendarSettings({ settings, onUpdate, isSaving }: Calen
         padding: '16px',
         marginBottom: '16px'
       }}>
-        <h3 style={{ 
-          fontSize: '15px', 
-          fontWeight: '700', 
-          color: '#1F2937', 
+        <h3 style={{
+          fontSize: '15px',
+          fontWeight: '700',
+          color: '#1F2937',
           margin: '0 0 12px 0'
         }}>
           Top Bar Display
@@ -421,9 +455,9 @@ export default function CalendarSettings({ settings, onUpdate, isSaving }: Calen
           borderRadius: '10px'
         }}>
           <div>
-            <div style={{ 
-              fontSize: '13px', 
-              fontWeight: '600', 
+            <div style={{
+              fontSize: '13px',
+              fontWeight: '600',
               color: '#1F2937',
               marginBottom: '2px'
             }}>
@@ -433,10 +467,10 @@ export default function CalendarSettings({ settings, onUpdate, isSaving }: Calen
               Display ongoing or upcoming event in top bar
             </div>
           </div>
-          <label style={{ 
-            position: 'relative', 
-            display: 'inline-block', 
-            width: '44px', 
+          <label style={{
+            position: 'relative',
+            display: 'inline-block',
+            width: '44px',
             height: '24px',
             cursor: isSaving ? 'not-allowed' : 'pointer',
             opacity: isSaving ? 0.5 : 1

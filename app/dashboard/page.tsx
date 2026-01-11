@@ -33,11 +33,34 @@ export default function Dashboard() {
       if (eventsResponse.ok) {
         const eventsData = await eventsResponse.json();
         setCalendarEvents(
-          eventsData.map((event: any) => ({
-            ...event,
-            start: new Date(event.start),
-            end: new Date(event.end),
-          }))
+          eventsData.map((event: any) => {
+            // Map backend fields (dueDate, dueTime) to frontend fields (start, end)
+            const startDate = new Date(event.dueDate);
+            // If dueTime is ISO string (as we sync now), use it
+            // If it's time string HH:mm, parse it
+            // Actually our sync saves dueTime as ISO string of the END time
+
+            let endDate = new Date(startDate);
+            if (event.dueTime) {
+              // Try parsing dueTime as ISO
+              const parsedEnd = new Date(event.dueTime);
+              if (!isNaN(parsedEnd.getTime())) {
+                endDate = parsedEnd;
+                // Also ensure start time part is correct if stored in dueDate and it was 00:00
+              }
+            } else {
+              // Default 1 hour duration
+              endDate.setHours(endDate.getHours() + 1);
+            }
+
+            return {
+              ...event,
+              start: startDate,
+              end: endDate,
+              // Ensure type is valid
+              type: event.type || 'event'
+            };
+          })
         );
       }
 
@@ -249,7 +272,7 @@ export default function Dashboard() {
 
     const newTodo: Note = {
       ...todo,
-      id: `todo-${Date.now()}`,
+      id: `todo-${Math.random().toString(36).substr(2, 9)}-${Date.now()}`,
       createdAt: new Date(),
       pageId: currentPage.id,
     };
@@ -268,7 +291,7 @@ export default function Dashboard() {
     if (!currentPage) return;
 
     const newTodo: Note = {
-      id: `todo-${Date.now()}`,
+      id: `todo-${Math.random().toString(36).substr(2, 9)}-${Date.now()}`,
       content,
       type: 'todo',
       completed: false,

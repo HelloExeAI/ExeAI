@@ -29,7 +29,7 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const editRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
-  
+
   // New simplified state
   const [currentDate, setCurrentDate] = useState(getToday());
   const [showSearch, setShowSearch] = useState(false);
@@ -44,7 +44,7 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
 
   const getOrCreatePage = (title: string): Page => {
     let page = allPages.find(p => p.title === title);
-    
+
     if (!page) {
       page = {
         id: Date.now().toString(),
@@ -55,7 +55,7 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
       };
       setAllPages([...allPages, page]);
     }
-    
+
     return page;
   };
 
@@ -83,7 +83,7 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
   useEffect(() => {
     const dateTitle = formatDateLong(currentDate);
     const datePage = getOrCreatePage(dateTitle);
-    
+
     if (datePage.notes.length === 0) {
       const firstNote: Note = {
         id: Date.now().toString(),
@@ -100,7 +100,7 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
       datePage.notes = [firstNote];
       setFocusedNoteId(firstNote.id);
     }
-    
+
     setCurrentPage(datePage);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentDate]);
@@ -115,10 +115,10 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
       }
 
       setSaveStatus('saving');
-      
+
       try {
         const dateStr = formatDateAPI(currentDate);
-        
+
         const response = await fetch('/api/daily-note', {
           method: 'POST',
           headers: {
@@ -147,12 +147,12 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
   useEffect(() => {
     if (currentPage && currentPage.notes.length > 0) {
       const hasContent = currentPage.notes.some(note => note.content.trim() !== '');
-      
+
       if (hasContent) {
         const contentStr = currentPage.notes
           .map(note => '  '.repeat(note.indent) + note.content)
           .join('\n');
-        
+
         autoSaveToAPI(currentPage.title, contentStr);
       } else {
         setSaveStatus('saved');
@@ -211,11 +211,11 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
     const regex = /\[\[(.*?)\]\]/g;
     const matches = [];
     let match;
-    
+
     while ((match = regex.exec(text)) !== null) {
       matches.push(match[1]);
     }
-    
+
     return matches;
   };
 
@@ -247,7 +247,7 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
   const handleContentInput = (e: React.FormEvent<HTMLDivElement>, noteId: string) => {
     const target = e.currentTarget;
     const content = target.textContent || '';
-    
+
     const selection = window.getSelection();
     const range = selection?.getRangeAt(0);
     const rect = range?.getBoundingClientRect();
@@ -295,15 +295,15 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>, note: Note) => {
     const content = e.currentTarget.textContent || '';
-    
+
     if (e.key === 'Enter' && !e.shiftKey && !showPageSearch && !showCommandMenu) {
       e.preventDefault();
       const selection = window.getSelection();
       const cursorPos = selection?.focusOffset || 0;
-      
+
       const currentContent = content.substring(0, cursorPos);
       const remainingContent = content.substring(cursorPos);
-      
+
       updateNoteContent(note.id, currentContent);
       createNewBulletWithContent(note, 'after', remainingContent);
     }
@@ -335,7 +335,7 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
     if (!currentPage) return;
 
     const newNote: Note = {
-      id: Date.now().toString(),
+      id: `note-${Math.random().toString(36).substr(2, 9)}-${Date.now()}`,
       content: initialContent,
       type: 'note',
       createdAt: new Date(),
@@ -349,7 +349,7 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
 
     const allNotes = flattenNotes(currentPage.notes);
     const currentIndex = allNotes.findIndex(n => n.id === currentNote.id);
-    
+
     if (position === 'after') {
       allNotes.splice(currentIndex + 1, 0, newNote);
     } else {
@@ -358,7 +358,7 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
 
     updatePageNotes(allNotes);
     setFocusedNoteId(newNote.id);
-    
+
     setTimeout(() => {
       const div = editRefs.current[newNote.id];
       if (div) {
@@ -380,24 +380,24 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
 
   const indentBullet = (note: Note) => {
     if (!currentPage) return;
-    
+
     const allNotes = flattenNotes(currentPage.notes);
     const currentIndex = allNotes.findIndex(n => n.id === note.id);
-    
+
     if (currentIndex > 0) {
       const previousNote = allNotes[currentIndex - 1];
       note.parentId = previousNote.id;
       note.indent = previousNote.indent + 1;
-      
+
       updatePageNotes(allNotes);
     }
   };
 
   const outdentBullet = (note: Note) => {
     if (!currentPage || note.indent === 0) return;
-    
+
     const allNotes = flattenNotes(currentPage.notes);
-    
+
     if (note.parentId) {
       const parent = allNotes.find(n => n.id === note.parentId);
       if (parent) {
@@ -410,16 +410,16 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
 
   const deleteBullet = (note: Note) => {
     if (!currentPage) return;
-    
+
     const allNotes = flattenNotes(currentPage.notes);
-    
+
     if (allNotes.length === 1) return;
-    
+
     const currentIndex = allNotes.findIndex(n => n.id === note.id);
     const filtered = allNotes.filter(n => n.id !== note.id);
-    
+
     updatePageNotes(filtered);
-    
+
     if (currentIndex > 0) {
       const prevNote = filtered[currentIndex - 1];
       setFocusedNoteId(prevNote.id);
@@ -443,7 +443,7 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
 
   const flattenNotes = (notes: Note[]): Note[] => {
     const result: Note[] = [];
-    
+
     const flatten = (noteList: Note[]) => {
       noteList.forEach(note => {
         result.push(note);
@@ -452,31 +452,31 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
         }
       });
     };
-    
+
     flatten(notes);
     return result;
   };
 
   const updateNoteContent = (noteId: string, content: string) => {
     if (!currentPage) return;
-    
+
     const linkedPages = extractLinkedPages(content);
     const allNotes = flattenNotes(currentPage.notes);
-    
+
     const updatedNotes = allNotes.map(note => {
       if (note.id === noteId) {
-        return { 
-          ...note, 
-          content, 
+        return {
+          ...note,
+          content,
           linkedPages,
           completed: note.completed !== undefined ? note.completed : false
         };
       }
       return note;
     });
-    
+
     updatePageNotes(updatedNotes);
-    
+
     linkedPages.forEach(pageTitle => {
       getOrCreatePage(pageTitle);
     });
@@ -484,7 +484,7 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
 
   const updatePageNotes = (flatNotes: Note[]) => {
     if (!currentPage) return;
-    
+
     const updatedPage = {
       ...currentPage,
       notes: flatNotes,
@@ -501,14 +501,14 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
 
     const content = editableDiv.textContent || '';
     const lastBracketIndex = content.lastIndexOf('[[');
-    
+
     const newContent = content.substring(0, lastBracketIndex) + `[[${pageTitle}]]`;
-    
+
     editableDiv.textContent = newContent;
     updateNoteContent(noteId, newContent);
     setShowPageSearch(false);
     setPageSearchQuery('');
-    
+
     editableDiv.focus();
     setTimeout(() => {
       const range = document.createRange();
@@ -530,29 +530,29 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
     const content = editableDiv.textContent || '';
     const lastSlashIndex = content.lastIndexOf('/');
     const newContent = content.substring(0, lastSlashIndex).trim();
-    
+
     editableDiv.textContent = newContent;
-    
+
     if (!currentPage) return;
-    
+
     const allNotes = flattenNotes(currentPage.notes);
-    const updatedNotes = allNotes.map(note => 
-      note.id === noteId 
-        ? { 
-            ...note, 
-            type: command.command as Note['type'], 
-            content: newContent,
-            ...(command.command === 'todo' ? { completed: false } : {})
-          }
+    const updatedNotes = allNotes.map(note =>
+      note.id === noteId
+        ? {
+          ...note,
+          type: command.command as Note['type'],
+          content: newContent,
+          ...(command.command === 'todo' ? { completed: false } : {})
+        }
         : note
     );
-    
+
     updatePageNotes(updatedNotes);
     setShowCommandMenu(false);
     setCommandSearchQuery('');
-    
+
     showSuccessToast(`Added to ${command.destination}`);
-    
+
     setTimeout(() => {
       editableDiv.focus();
       const range = document.createRange();
@@ -585,10 +585,10 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
 
   const renderBulletTree = (notes: Note[], level: number = 0): React.ReactNode => {
     const tree = buildNoteTree(notes);
-    
+
     return tree.map((note) => (
       <div key={note.id} style={{ marginLeft: `${level * 28}px` }}>
-        <div 
+        <div
           style={{
             display: 'flex',
             alignItems: 'start',
@@ -597,7 +597,7 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
             position: 'relative'
           }}
         >
-          <div style={{ 
+          <div style={{
             fontSize: '14px',
             color: getTypeColor(note.type),
             flexShrink: 0,
@@ -610,7 +610,7 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
           </div>
 
           <div
-            ref={(el) => { 
+            ref={(el) => {
               editRefs.current[note.id] = el;
               if (el && el.textContent !== note.content) {
                 el.textContent = note.content;
@@ -645,7 +645,7 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
             }}
           />
         </div>
-        
+
         {note.children && note.children.length > 0 && (
           <div style={{ marginTop: '0px' }}>
             {renderBulletTree(note.children, level + 1)}
@@ -655,7 +655,7 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
     ));
   };
 
-  const filteredPages = allPages.filter(page => 
+  const filteredPages = allPages.filter(page =>
     page.title.toLowerCase().includes(pageSearchQuery.toLowerCase())
   );
 
@@ -668,8 +668,8 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
 
   return (
     <>
-      <div style={{ 
-        height: '100%', 
+      <div style={{
+        height: '100%',
         display: 'flex',
         flexDirection: 'column',
         backgroundColor: '#FFFFFF'
@@ -711,8 +711,8 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
             overflowY: 'auto',
             minWidth: '280px'
           }}>
-            <div style={{ 
-              padding: '12px 16px', 
+            <div style={{
+              padding: '12px 16px',
               borderBottom: '1px solid #E5E7EB',
               fontSize: '11px',
               fontWeight: '700',
@@ -722,7 +722,7 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
             }}>
               🔗 Link to Page
             </div>
-            
+
             {filteredPages.length === 0 && pageSearchQuery && (
               <div
                 onClick={() => focusedNoteId && handlePageLinkSelect(pageSearchQuery, focusedNoteId)}
@@ -747,7 +747,7 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
                 </div>
               </div>
             )}
-            
+
             {filteredPages.slice(0, 8).map(page => (
               <div
                 key={page.id}
@@ -794,8 +794,8 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
             overflowY: 'auto',
             minWidth: '320px'
           }}>
-            <div style={{ 
-              padding: '12px 16px', 
+            <div style={{
+              padding: '12px 16px',
               borderBottom: '1px solid #E5E7EB',
               fontSize: '11px',
               fontWeight: '700',
@@ -805,7 +805,7 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
             }}>
               ⚡ Quick Commands
             </div>
-            
+
             {filteredCommands.map(cmd => (
               <div
                 key={cmd.command}
@@ -822,7 +822,7 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
                 onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F9FAFB'}
                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
               >
-                <div style={{ 
+                <div style={{
                   fontSize: '20px',
                   color: cmd.color,
                   flexShrink: 0
@@ -830,22 +830,22 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
                   {cmd.icon}
                 </div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ 
-                    fontSize: '14px', 
-                    fontWeight: '600', 
+                  <div style={{
+                    fontSize: '14px',
+                    fontWeight: '600',
                     color: '#1F2937',
                     marginBottom: '2px'
                   }}>
                     /{cmd.command}
                   </div>
-                  <div style={{ 
-                    fontSize: '12px', 
+                  <div style={{
+                    fontSize: '12px',
                     color: '#6B7280',
                     marginBottom: '4px'
                   }}>
                     {cmd.description}
                   </div>
-                  <div style={{ 
+                  <div style={{
                     fontSize: '10px',
                     color: cmd.color,
                     backgroundColor: cmd.color + '15',

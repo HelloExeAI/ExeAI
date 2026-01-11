@@ -10,7 +10,7 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
-  directUrl = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ============================================
@@ -72,6 +72,7 @@ model Account {
   scope             String?
   id_token          String? @db.Text
   session_state     String?
+  refresh_token_expires_in Int?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -136,6 +137,7 @@ model Task {
   dueTime     String?   // Store time separately for flexibility
   reminder    DateTime? // When to send reminder
   metadata    Json?     // Store call agenda, meeting notes, etc.
+  googleEventId String? // ID of the event in Google Calendar
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   completedAt DateTime?

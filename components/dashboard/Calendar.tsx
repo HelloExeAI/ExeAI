@@ -43,40 +43,36 @@ export default function Calendar({ events = [], onAddEvent, onUpdateEvent, onDel
         setSettingsLoaded(true);
       }
     } catch (error) {
-      console.error('Error fetching calendar settings:', error);
       setSettingsLoaded(true);
     }
   };
 
   // Convert from app event format to internal format
-  const convertedEvents: CalendarEvent[] = [
-    { id: '1', date: '2025-11-01', type: 'holiday', title: 'All Saints Day', color: '#EF4444' },
-    { id: '2', date: '2025-11-08', type: 'internal_meeting', title: 'Team Standup', time: '10:00 AM', color: '#3B82F6' },
-    { id: '3', date: '2025-11-08', type: 'client_meeting', title: 'Client Call', time: '2:00 PM', color: '#1E40AF' },
-    { id: '4', date: '2025-11-15', type: 'birthday', title: "John's Birthday", color: '#EC4899' },
-    { id: '5', date: '2025-11-22', type: 'travel', title: 'Flight to Dubai', time: '6:00 AM', color: '#14B8A6' },
-    { id: '6', date: '2025-11-23', type: 'vacation', title: 'Dubai Trip', color: '#10B981' },
-    { id: '7', date: '2025-11-24', type: 'vacation', title: 'Dubai Trip', color: '#10B981' },
-    
-    ...events.map(event => {
-      const eventDate = new Date(event.start);
-      const typeConfig = eventTypes.find(t => t.type === event.type) || eventTypes.find(t => t.type === 'event')!;
-      
-      return {
-        id: event.id,
-        date: `${eventDate.getFullYear()}-${String(eventDate.getMonth() + 1).padStart(2, '0')}-${String(eventDate.getDate()).padStart(2, '0')}`,
-        type: event.type as any,
-        title: event.title,
-        time: eventDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-        color: typeConfig.color,
-        description: event.description
-      };
-    })
-  ];
+  // We rely fully on props 'events' which should be passed from the parent (Dashboard)
+  const convertedEvents: CalendarEvent[] = events.map(event => {
+    const eventDate = new Date(event.start);
+    // Ensure we have a valid end date
+    const endDate = event.end ? new Date(event.end) : new Date(eventDate.getTime() + 60 * 60 * 1000);
+
+    const typeConfig = eventTypes.find(t => t.type === event.type) || eventTypes.find(t => t.type === 'event')!;
+
+    return {
+      id: event.id,
+      date: `${eventDate.getFullYear()}-${String(eventDate.getMonth() + 1).padStart(2, '0')}-${String(eventDate.getDate()).padStart(2, '0')}`,
+      type: event.type as any,
+      title: event.title,
+      time: eventDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+      color: typeConfig.color,
+      description: event.description,
+      // Store original objects for details view
+      start: eventDate,
+      end: endDate
+    };
+  });
 
   const monthNamesShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-  
+
   const generateYears = () => {
     const currentYear = new Date().getFullYear();
     const years = [];
@@ -91,7 +87,7 @@ export default function Calendar({ events = [], onAddEvent, onUpdateEvent, onDel
     const month = date.getMonth();
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-    
+
     const days = [];
     for (let i = 0; i < firstDay; i++) {
       days.push(null);
@@ -110,18 +106,18 @@ export default function Calendar({ events = [], onAddEvent, onUpdateEvent, onDel
   const isToday = (date: Date, day: number): boolean => {
     const today = new Date();
     return date.getFullYear() === today.getFullYear() &&
-           date.getMonth() === today.getMonth() &&
-           day === today.getDate();
+      date.getMonth() === today.getMonth() &&
+      day === today.getDate();
   };
 
   // Updated weekend logic based on settings
   const isWeekendDay = (date: Date, day: number): boolean => {
     const fullDate = new Date(date.getFullYear(), date.getMonth(), day);
     const dayOfWeek = fullDate.getDay();
-    
+
     // Sunday is always a weekend (dayOfWeek === 0)
     if (dayOfWeek === 0) return true;
-    
+
     // Saturday logic (dayOfWeek === 6)
     if (dayOfWeek === 6) {
       if (weekendMode === 'all_saturdays_working') {
@@ -135,7 +131,7 @@ export default function Calendar({ events = [], onAddEvent, onUpdateEvent, onDel
         return weekNumber % 2 === 0; // Even weeks are off, odd weeks are working
       }
     }
-    
+
     return false;
   };
 
@@ -192,15 +188,15 @@ export default function Calendar({ events = [], onAddEvent, onUpdateEvent, onDel
     }
     setShowEventDetails(false);
   };
-  
+
   const days = getDaysInMonth(currentDate);
   const years = generateYears();
 
   return (
     <>
-      <div style={{ 
-        backgroundColor: '#FFFFFF', 
-        border: '1px solid #E5E7EB', 
+      <div style={{
+        backgroundColor: '#FFFFFF',
+        border: '1px solid #E5E7EB',
         borderRadius: '12px',
         padding: '8px',
         position: 'relative'
@@ -211,14 +207,14 @@ export default function Calendar({ events = [], onAddEvent, onUpdateEvent, onDel
           <div style={{ position: 'relative' }}>
             <button
               onClick={() => setShowMonthPicker(!showMonthPicker)}
-              style={{ 
-                padding: '3px 8px', 
-                borderRadius: '6px', 
-                border: 'none', 
-                backgroundColor: '#F3F4F6', 
-                color: '#1F2937', 
-                fontSize: '11px', 
-                fontWeight: '600', 
+              style={{
+                padding: '3px 8px',
+                borderRadius: '6px',
+                border: 'none',
+                backgroundColor: '#F3F4F6',
+                color: '#1F2937',
+                fontSize: '11px',
+                fontWeight: '600',
                 cursor: 'pointer',
                 transition: 'all 0.2s'
               }}
@@ -227,7 +223,7 @@ export default function Calendar({ events = [], onAddEvent, onUpdateEvent, onDel
             >
               {monthNamesShort[currentDate.getMonth()]}
             </button>
-            
+
             {showMonthPicker && (
               <div style={{
                 position: 'absolute',
@@ -279,14 +275,14 @@ export default function Calendar({ events = [], onAddEvent, onUpdateEvent, onDel
           <div style={{ position: 'relative' }}>
             <button
               onClick={() => setShowYearPicker(!showYearPicker)}
-              style={{ 
-                padding: '3px 8px', 
-                borderRadius: '6px', 
-                border: 'none', 
-                backgroundColor: '#F3F4F6', 
-                color: '#1F2937', 
-                fontSize: '11px', 
-                fontWeight: '600', 
+              style={{
+                padding: '3px 8px',
+                borderRadius: '6px',
+                border: 'none',
+                backgroundColor: '#F3F4F6',
+                color: '#1F2937',
+                fontSize: '11px',
+                fontWeight: '600',
                 cursor: 'pointer',
                 transition: 'all 0.2s'
               }}
@@ -295,7 +291,7 @@ export default function Calendar({ events = [], onAddEvent, onUpdateEvent, onDel
             >
               {currentDate.getFullYear()}
             </button>
-            
+
             {showYearPicker && (
               <div style={{
                 position: 'absolute',
@@ -376,13 +372,13 @@ export default function Calendar({ events = [], onAddEvent, onUpdateEvent, onDel
 
         {/* Ultra-Compact Day Headers */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '1px', marginBottom: '1px' }}>
-          {['S','M','T','W','T','F','S'].map((d, idx) => (
-            <div 
-              key={`header-${idx}`} 
-              style={{ 
-                textAlign: 'center', 
-                fontSize: '8px', 
-                fontWeight: '700', 
+          {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, idx) => (
+            <div
+              key={`header-${idx}`}
+              style={{
+                textAlign: 'center',
+                fontSize: '8px',
+                fontWeight: '700',
                 color: idx === 0 || idx === 6 ? '#10B981' : '#6B7280',
                 padding: '1px 0',
                 letterSpacing: '0.03em'
@@ -404,13 +400,13 @@ export default function Calendar({ events = [], onAddEvent, onUpdateEvent, onDel
             const isTodayDate = isToday(currentDate, day);
             const isWeekend = isWeekendDay(currentDate, day);
             const isHolidayDay = isHoliday(currentDate, day);
-            const isSelected = selectedDate && 
-              selectedDate.getDate() === day && 
+            const isSelected = selectedDate &&
+              selectedDate.getDate() === day &&
               selectedDate.getMonth() === currentDate.getMonth() &&
               selectedDate.getFullYear() === currentDate.getFullYear();
 
             return (
-              <div 
+              <div
                 key={`day-${idx}`}
                 onClick={() => handleDateClick(day)}
                 style={{
@@ -446,9 +442,9 @@ export default function Calendar({ events = [], onAddEvent, onUpdateEvent, onDel
 
                 {/* Ultra-Compact Event Dots */}
                 {dayEvents.length > 0 && (
-                  <div style={{ 
-                    display: 'flex', 
-                    gap: '1px', 
+                  <div style={{
+                    display: 'flex',
+                    gap: '1px',
                     justifyContent: 'center',
                     flexWrap: 'wrap',
                     minHeight: '4px'

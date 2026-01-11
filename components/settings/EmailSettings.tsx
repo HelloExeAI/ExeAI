@@ -17,38 +17,51 @@ export default function EmailSettings({ settings, onUpdate, isSaving }: EmailSet
   const [notifications, setNotifications] = useState(settings.emailNotifications ?? true);
 
   useEffect(() => {
-    setGmailConnected(settings.emailGmailConnected || false);
+    checkGmailStatus();
+  }, []);
+
+  const checkGmailStatus = async () => {
+    try {
+      const res = await fetch('/api/gmail/status');
+      if (res.ok) {
+        const data = await res.json();
+        setGmailConnected(data.connected);
+      }
+    } catch (error) {
+      console.error('Failed to check Gmail status', error);
+    }
+  };
+
+  useEffect(() => {
+    // Gmail status is checked via API, but we sync other fields
     setOutlookConnected(settings.emailOutlookConnected || false);
     setSignature(settings.emailSignature || '');
     setNotifications(settings.emailNotifications ?? true);
   }, [settings]);
 
   const handleConnectGmail = async () => {
-    const newStatus = !gmailConnected;
-    setGmailConnected(newStatus);
-    
     try {
-      await onUpdate({
-        emailGmailConnected: newStatus,
-      });
-      
-      if (newStatus) {
-        alert('Gmail connected successfully! (Demo mode)');
+      const res = await fetch('/api/gmail/auth');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.authUrl) {
+          window.location.href = data.authUrl;
+        }
       }
     } catch (error) {
-      console.error('Error connecting Gmail:', error);
+      console.error('Error initiating Gmail connection:', error);
     }
   };
 
   const handleConnectOutlook = async () => {
     const newStatus = !outlookConnected;
     setOutlookConnected(newStatus);
-    
+
     try {
       await onUpdate({
         emailOutlookConnected: newStatus,
       });
-      
+
       if (newStatus) {
         alert('Outlook connected successfully! (Demo mode)');
       }
@@ -59,9 +72,13 @@ export default function EmailSettings({ settings, onUpdate, isSaving }: EmailSet
 
   const handleDisconnectGmail = async () => {
     if (confirm('Are you sure you want to disconnect Gmail?')) {
-      setGmailConnected(false);
       try {
-        await onUpdate({ emailGmailConnected: false });
+        const res = await fetch('/api/gmail/disconnect', { method: 'POST' });
+        if (res.ok) {
+          setGmailConnected(false);
+          // Also update settings to keep UI consistent if there's a prop update
+          await onUpdate({ emailGmailConnected: false });
+        }
       } catch (error) {
         console.error('Error disconnecting Gmail:', error);
       }
@@ -90,7 +107,7 @@ export default function EmailSettings({ settings, onUpdate, isSaving }: EmailSet
     }
   };
 
-  const hasChanges = 
+  const hasChanges =
     signature !== (settings.emailSignature || '') ||
     notifications !== (settings.emailNotifications ?? true);
 
@@ -98,18 +115,18 @@ export default function EmailSettings({ settings, onUpdate, isSaving }: EmailSet
     <div>
       {/* Header */}
       <div style={{ marginBottom: '20px' }}>
-        <h2 style={{ 
-          fontSize: '20px', 
-          fontWeight: '700', 
-          color: '#1F2937', 
-          margin: '0 0 4px 0' 
+        <h2 style={{
+          fontSize: '20px',
+          fontWeight: '700',
+          color: '#1F2937',
+          margin: '0 0 4px 0'
         }}>
           Email Settings
         </h2>
-        <p style={{ 
-          fontSize: '13px', 
-          color: '#6B7280', 
-          margin: 0 
+        <p style={{
+          fontSize: '13px',
+          color: '#6B7280',
+          margin: 0
         }}>
           Connect your email accounts and customize preferences
         </p>
@@ -123,18 +140,18 @@ export default function EmailSettings({ settings, onUpdate, isSaving }: EmailSet
         padding: '16px',
         marginBottom: '16px'
       }}>
-        <h3 style={{ 
-          fontSize: '15px', 
-          fontWeight: '700', 
-          color: '#1F2937', 
+        <h3 style={{
+          fontSize: '15px',
+          fontWeight: '700',
+          color: '#1F2937',
           margin: '0 0 12px 0'
         }}>
           Connected Accounts
         </h3>
-        <p style={{ 
-          fontSize: '12px', 
-          color: '#6B7280', 
-          margin: '0 0 16px 0' 
+        <p style={{
+          fontSize: '12px',
+          color: '#6B7280',
+          margin: '0 0 16px 0'
         }}>
           Link your email accounts to manage messages in EXEAI
         </p>
@@ -291,10 +308,10 @@ export default function EmailSettings({ settings, onUpdate, isSaving }: EmailSet
         padding: '16px',
         marginBottom: '16px'
       }}>
-        <h3 style={{ 
-          fontSize: '15px', 
-          fontWeight: '700', 
-          color: '#1F2937', 
+        <h3 style={{
+          fontSize: '15px',
+          fontWeight: '700',
+          color: '#1F2937',
           margin: '0 0 12px 0'
         }}>
           Email Signature
@@ -324,10 +341,10 @@ export default function EmailSettings({ settings, onUpdate, isSaving }: EmailSet
         padding: '16px',
         marginBottom: '16px'
       }}>
-        <h3 style={{ 
-          fontSize: '15px', 
-          fontWeight: '700', 
-          color: '#1F2937', 
+        <h3 style={{
+          fontSize: '15px',
+          fontWeight: '700',
+          color: '#1F2937',
           margin: '0 0 12px 0'
         }}>
           Notifications

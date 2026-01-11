@@ -22,7 +22,7 @@ function SignInContent() {
       // Map NextAuth error codes to user-friendly messages
       switch (errorParam) {
         case 'Callback':
-          errorMessage = 'OAuth callback error. Database connection issue - please check your database configuration.';
+          errorMessage = 'OAuth authentication completed, but there was an issue saving your session. Please try signing in again.';
           break;
         case 'Configuration':
           errorMessage = 'Server configuration error. Please contact support.';

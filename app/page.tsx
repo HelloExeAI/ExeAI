@@ -17,7 +17,7 @@ export default function Dashboard() {
   const [toastMessage, setToastMessage] = useState('');
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
   // Redirect to sign-in if not authenticated
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -27,7 +27,7 @@ export default function Dashboard() {
       loadUserData();
     }
   }, [status, router]);
-  
+
   // Load user's data from database
   const loadUserData = async () => {
     try {
@@ -41,7 +41,7 @@ export default function Dashboard() {
           end: new Date(event.end)
         })));
       }
-      
+
       // Load today's notes from API
       const today = new Date().toISOString().split('T')[0];
       const notesResponse = await fetch(`/api/notes?date=${today}`);
@@ -55,7 +55,7 @@ export default function Dashboard() {
       console.error('Failed to load user data:', error);
     }
   };
-  
+
   // Function to add a new calendar event
   const addCalendarEvent = async (event: Omit<CalendarEvent, 'id'>) => {
     try {
@@ -64,7 +64,7 @@ export default function Dashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(event)
       });
-      
+
       if (response.ok) {
         const newEvent = await response.json();
         setCalendarEvents(prev => [...prev, {
@@ -79,7 +79,7 @@ export default function Dashboard() {
       displayToast('Failed to add event');
     }
   };
-  
+
   // Function to update an existing calendar event
   const updateCalendarEvent = async (updatedEvent: CalendarEvent) => {
     try {
@@ -88,9 +88,9 @@ export default function Dashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedEvent)
       });
-      
+
       if (response.ok) {
-        setCalendarEvents(prev => 
+        setCalendarEvents(prev =>
           prev.map(event => event.id === updatedEvent.id ? updatedEvent : event)
         );
         displayToast(`${updatedEvent.title} updated`);
@@ -100,7 +100,7 @@ export default function Dashboard() {
       displayToast('Failed to update event');
     }
   };
-  
+
   // Function to delete a calendar event
   const deleteCalendarEvent = async (eventId: string) => {
     try {
@@ -108,7 +108,7 @@ export default function Dashboard() {
       const response = await fetch(`/api/calendar-events/${eventId}`, {
         method: 'DELETE'
       });
-      
+
       if (response.ok) {
         setCalendarEvents(prev => prev.filter(event => event.id !== eventId));
         if (eventToDelete) {
@@ -120,34 +120,34 @@ export default function Dashboard() {
       displayToast('Failed to delete event');
     }
   };
-  
+
   // Extract events from notes (existing logic)
   useEffect(() => {
     if (!currentPage) return;
-    
-    const eventNotes = currentPage.notes.filter(note => 
-      note.type === 'event' || note.type === 'meeting' || 
+
+    const eventNotes = currentPage.notes.filter(note =>
+      note.type === 'event' || note.type === 'meeting' ||
       note.type === 'travel' || note.type === 'birthday'
     );
-    
+
     eventNotes.forEach(note => {
       if (calendarEvents.some(event => event.sourceNoteId === note.id)) {
         return;
       }
-      
+
       const dateMatch = note.content.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
       const timeMatch = note.content.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
-      
+
       if (dateMatch) {
         const month = parseInt(dateMatch[1]) - 1;
         const day = parseInt(dateMatch[2]);
         let year = parseInt(dateMatch[3]);
         if (year < 100) year += 2000;
-        
+
         const eventDate = new Date(year, month, day);
         let hours = 9;
         let minutes = 0;
-        
+
         if (timeMatch) {
           hours = parseInt(timeMatch[1]);
           minutes = parseInt(timeMatch[2]);
@@ -155,11 +155,11 @@ export default function Dashboard() {
             hours += 12;
           }
         }
-        
+
         eventDate.setHours(hours, minutes);
         const endDate = new Date(eventDate);
         endDate.setHours(endDate.getHours() + 1);
-        
+
         addCalendarEvent({
           title: note.content,
           start: eventDate,
@@ -171,29 +171,29 @@ export default function Dashboard() {
       }
     });
   }, [currentPage]);
-  
+
   const handleCompleteTodo = async (noteId: string, completed: boolean) => {
     if (!currentPage) return;
-    
+
     try {
       const response = await fetch(`/api/notes/${noteId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ completed })
       });
-      
+
       if (response.ok) {
         const allNotes = [...currentPage.notes];
-        const updatedNotes = allNotes.map(note => 
+        const updatedNotes = allNotes.map(note =>
           note.id === noteId ? { ...note, completed } : note
         );
-        
+
         setCurrentPage({
           ...currentPage,
           notes: updatedNotes,
           lastModified: new Date()
         });
-        
+
         if (completed) {
           displayToast("Task completed!");
         }
@@ -205,35 +205,35 @@ export default function Dashboard() {
 
   const handleDeleteTodo = async (noteId: string) => {
     if (!currentPage) return;
-    
+
     try {
       const response = await fetch(`/api/notes/${noteId}`, {
         method: 'DELETE'
       });
-      
+
       if (response.ok) {
         const allNotes = [...currentPage.notes];
         const filteredNotes = allNotes.filter(note => note.id !== noteId);
-        
+
         setCurrentPage({
           ...currentPage,
           notes: filteredNotes,
           lastModified: new Date()
         });
-        
+
         displayToast("Task deleted");
       }
     } catch (error) {
       console.error('Failed to delete todo:', error);
     }
   };
-  
+
   const displayToast = (message: string) => {
     setToastMessage(message);
     setShowSuccessToast(true);
     setTimeout(() => setShowSuccessToast(false), 3000);
   };
-  
+
   const todoItems = currentPage?.notes.filter(note => note.type === 'todo') || [];
 
   // Show loading state
@@ -249,21 +249,21 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="flex flex-col h-screen" style={{ 
+    <div className="flex flex-col h-screen" style={{
       background: 'linear-gradient(135deg, #f5f7ff 0%, #e9ecff 25%, #e5e8ff 50%, #dbe3ff 75%, #d8e0ff 100%)'
     }}>
       {/* Top Bar */}
-      <TopBar 
+      <TopBar
         username={session?.user?.name || 'User'}
         email={session?.user?.email || ''}
         profileImage={session?.user?.image || undefined}
       />
-      
+
       {/* Main Dashboard */}
       <div className="flex flex-1 overflow-hidden">
         <div className="frosted-panel" style={{ width: '160px' }}>
-          <LeftSidebar 
-            calendarEvents={calendarEvents} 
+          <LeftSidebar
+            calendarEvents={calendarEvents}
             onAddEvent={addCalendarEvent}
             onUpdateEvent={updateCalendarEvent}
             onDeleteEvent={deleteCalendarEvent}
@@ -271,7 +271,7 @@ export default function Dashboard() {
         </div>
         <div className="flex-1 flex">
           <div className="flex-1 border-r border-gray-200 frosted-panel">
-            <CenterPanel 
+            <CenterPanel
               currentPage={currentPage}
               setCurrentPage={setCurrentPage}
               onAddCalendarEvent={addCalendarEvent}
@@ -282,7 +282,7 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
-      
+
       {/* Toast */}
       {showSuccessToast && (
         <div style={{
@@ -306,7 +306,7 @@ export default function Dashboard() {
           {toastMessage}
         </div>
       )}
-      
+
       <style jsx global>{`
         body {
           background: linear-gradient(135deg, #f5f7ff 0%, #e9ecff 25%, #e5e8ff 50%, #dbe3ff 75%, #d8e0ff 100%);
