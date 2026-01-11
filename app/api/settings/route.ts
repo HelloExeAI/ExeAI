@@ -67,10 +67,8 @@ export async function PATCH(request: NextRequest) {
       // Exclude non-schema fields
       emailGmailConnected,
       emailOutlookConnected,
-      messageWhatsAppConnected,
       messageSMSConnected,
       messageTeamsConnected,
-      messageSlackConnected,
       // Keep everything else
       ...validData
     } = body;

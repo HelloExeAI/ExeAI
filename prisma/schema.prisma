@@ -275,6 +275,8 @@ model UserSettings {
   // Message Settings (for future)
   messageReadReceipts   Boolean @default(true)
   messageNotifications  Boolean @default(true)
+  messageWhatsAppConnected Boolean @default(false)
+  messageSlackConnected    Boolean @default(false)
 
   // General Preferences
   language              String  @default("en")
