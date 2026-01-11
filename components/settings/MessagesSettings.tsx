@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { UserSettings } from '@/types/settings';
+import Portal from '@/components/ui/Portal';
 
 interface MessagesSettingsProps {
   settings: UserSettings;
@@ -22,32 +23,50 @@ export default function MessagesSettings({ settings, onUpdate, isSaving }: Messa
     setNotifications(settings.messageNotifications ?? true);
   }, [settings]);
 
-  const handleConnectWhatsApp = async () => {
-    const newStatus = !whatsappConnected;
-    setWhatsappConnected(newStatus);
-    
-    try {
-      await onUpdate({
-        messageWhatsAppConnected: newStatus,
-      });
-      
-      if (newStatus) {
-        alert('WhatsApp connected successfully! (Demo mode)\n\nIn production, this will use WhatsApp Web QR code scanning.');
-      }
-    } catch (error) {
-      console.error('Error connecting WhatsApp:', error);
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [qrCodeData, setQrCodeData] = useState<string | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState('disconnected');
+
+  useEffect(() => {
+    // Poll for status if modal is open
+    let interval: any;
+    if (showQrModal) {
+      interval = setInterval(async () => {
+        const res = await fetch('/api/whatsapp');
+        const data = await res.json();
+        if (data.qrImage) {
+          setQrCodeData(data.qrImage);
+        }
+        if (data.status === 'open') {
+          setWhatsappConnected(true);
+          setShowQrModal(false);
+          onUpdate({ messageWhatsAppConnected: true });
+        }
+      }, 2000);
     }
+    return () => clearInterval(interval);
+  }, [showQrModal]);
+
+  const handleConnectWhatsApp = async () => {
+    setShowQrModal(true);
+    setConnectionStatus('connecting');
+
+    // Trigger initialization
+    await fetch('/api/whatsapp', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'connect' })
+    });
   };
 
   const handleConnectSlack = async () => {
     const newStatus = !slackConnected;
     setSlackConnected(newStatus);
-    
+
     try {
       await onUpdate({
         messageSlackConnected: newStatus,
       });
-      
+
       if (newStatus) {
         alert('Slack connected successfully! (Demo mode)\n\nIn production, this will use Slack OAuth.');
       }
@@ -89,7 +108,7 @@ export default function MessagesSettings({ settings, onUpdate, isSaving }: Messa
     }
   };
 
-  const hasChanges = 
+  const hasChanges =
     readReceipts !== (settings.messageReadReceipts ?? true) ||
     notifications !== (settings.messageNotifications ?? true);
 
@@ -362,6 +381,57 @@ export default function MessagesSettings({ settings, onUpdate, isSaving }: Messa
             {isSaving ? 'Saving...' : 'Save Changes'}
           </button>
         </div>
+      )}
+
+      {/* WhatsApp QR Modal */}
+      {showQrModal && (
+        <Portal>
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 99999
+          }} onClick={() => setShowQrModal(false)}>
+            <div style={{
+              backgroundColor: 'white',
+              padding: '30px',
+              borderRadius: '16px',
+              textAlign: 'center',
+              maxWidth: '400px'
+            }} onClick={(e) => e.stopPropagation()}>
+              <h3 style={{ fontSize: '20px', marginBottom: '20px' }}>Scan to Connect</h3>
+              <p style={{ marginBottom: '20px', color: '#666' }}>
+                Open WhatsApp on your phone, go to Settings &gt; Linked Devices, and scan this code.
+              </p>
+              {qrCodeData ? (
+                <img src={qrCodeData} alt="WhatsApp QR Code" style={{ width: '250px', height: '250px' }} />
+              ) : (
+                <div style={{ width: '250px', height: '250px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <p>Generating QR Code...</p>
+                </div>
+              )}
+              <button
+                onClick={() => setShowQrModal(false)}
+                style={{
+                  marginTop: '20px',
+                  padding: '10px 20px',
+                  border: 'none',
+                  backgroundColor: '#eee',
+                  borderRadius: '8px',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </Portal>
       )}
     </div>
   );

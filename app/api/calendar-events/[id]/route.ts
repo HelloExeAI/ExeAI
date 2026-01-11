@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
+import { getCalendarClient } from '@/lib/google-calendar';
 
 // GET - Get a specific calendar event
 export async function GET(
@@ -59,30 +60,36 @@ export async function PUT(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email }
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
-
     const { id } = await params;
+
     // Verify the event belongs to this user
-    const existingEvent = await prisma.task.findFirst({
-      where: {
-        id,
-        userId: user.id,
-        type: { in: ['meeting', 'event', 'travel', 'birthday', 'reminder'] }
-      }
+    const existingEvent = await prisma.task.findUnique({
+      where: { id }
     });
 
     if (!existingEvent) {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 });
     }
 
+    // Verify ownership
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    });
+
+    if (!user || existingEvent.userId !== user.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { title, start, end, type, description, location } = body;
+
+    // Prepare metadata update - merge with existing
+    const existingMetadata = (existingEvent.metadata as any) || {};
+    const newMetadata = {
+      ...existingMetadata,
+      // Only update location if provided
+      ...(location ? { location } : {})
+    };
 
     // Update the event (using Task model)
     const updatedEvent = await prisma.task.update({
@@ -91,11 +98,45 @@ export async function PUT(
         title,
         dueDate: start ? new Date(start) : undefined,
         dueTime: end ? new Date(end).toISOString() : undefined,
-        type,
-        description: description || location || '',
-        metadata: { location }
+        type: type || existingEvent.type, // Preserve type if not provided
+        description: description ?? existingEvent.description, // Use new description if provided (allow empty string), else keep existing
+        metadata: newMetadata
       }
     });
+
+    // Sync to Google Calendar if available
+    const googleEventId = (existingEvent as any).googleEventId; // Cast as any if TS complains
+
+    if (googleEventId) {
+      try {
+        const calendar = await getCalendarClient(user.id);
+
+        const patchBody: any = {
+          summary: title,
+          description: description ?? existingEvent.description
+        };
+
+        if (location) patchBody.location = location;
+
+        if (start) {
+          patchBody.start = { dateTime: new Date(start).toISOString() };
+        }
+        if (end) {
+          patchBody.end = { dateTime: new Date(end).toISOString() };
+        }
+
+        await calendar.events.patch({
+          calendarId: 'primary',
+          eventId: googleEventId,
+          requestBody: patchBody
+        });
+
+        console.log(`✅ Synced update for event ${googleEventId} to Google Calendar`);
+      } catch (googleError) {
+        console.error('⚠️ Failed to sync update to Google Calendar:', googleError);
+        // Continue, as local update succeeded
+      }
+    }
 
     return NextResponse.json(updatedEvent);
   } catch (error) {

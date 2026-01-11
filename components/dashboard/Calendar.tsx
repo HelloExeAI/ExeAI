@@ -22,6 +22,7 @@ export default function Calendar({ events = [], onAddEvent, onUpdateEvent, onDel
   const [showEventDetails, setShowEventDetails] = useState(false);
   const [showAddEventModal, setShowAddEventModal] = useState(false);
   const [selectedDateEvents, setSelectedDateEvents] = useState<CalendarEvent[]>([]);
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | undefined>(undefined);
   const [eventTypes] = useState<EventTypeConfig[]>(DEFAULT_EVENT_TYPES);
   const [weekendMode, setWeekendMode] = useState<'all_saturdays_working' | 'alternate_saturdays_working' | 'no_saturdays_working'>('all_saturdays_working');
   const [settingsLoaded, setSettingsLoaded] = useState(false);
@@ -66,7 +67,12 @@ export default function Calendar({ events = [], onAddEvent, onUpdateEvent, onDel
       description: event.description,
       // Store original objects for details view
       start: eventDate,
-      end: endDate
+      end: endDate,
+      // Extract metadata
+      meetingLink: (event as any).metadata?.meetingLink,
+      location: (event as any).metadata?.location,
+      attendees: (event as any).metadata?.attendees,
+      metadata: (event as any).metadata,
     };
   });
 
@@ -162,24 +168,39 @@ export default function Calendar({ events = [], onAddEvent, onUpdateEvent, onDel
   };
 
   const handleAddEvent = () => {
+    setEditingEvent(undefined);
     setSelectedDate(new Date());
     setShowAddEventModal(true);
   };
 
-  const handleSaveEvent = (eventData: any) => {
-    if (onAddEvent) {
-      const startDateTime = new Date(`${eventData.startDate}T${eventData.startTime}`);
-      const endDateTime = new Date(`${eventData.endDate}T${eventData.endTime}`);
+  const handleEditEvent = (event: CalendarEvent) => {
+    setEditingEvent(event);
+    setShowEventDetails(false);
+    setShowAddEventModal(true);
+  };
 
-      onAddEvent({
-        title: eventData.title,
-        start: startDateTime,
-        end: endDateTime,
-        type: eventData.type as any,
-        description: eventData.description
-      });
+  const handleSaveEvent = (eventData: any) => {
+    const startDateTime = new Date(`${eventData.startDate}T${eventData.startTime}`);
+    const endDateTime = new Date(`${eventData.endDate}T${eventData.endTime}`);
+
+    const eventPayload = {
+      title: eventData.title,
+      start: startDateTime,
+      end: endDateTime,
+      type: eventData.type as any,
+      description: eventData.description,
+      id: eventData.id,
+      metadata: editingEvent?.metadata
+    };
+
+    if (eventData.id && onUpdateEvent) {
+      onUpdateEvent(eventPayload as any);
+    } else if (onAddEvent) {
+      onAddEvent(eventPayload);
     }
+
     setShowAddEventModal(false);
+    setEditingEvent(undefined);
   };
 
   const handleDeleteEvent = (eventId: string) => {
@@ -486,6 +507,7 @@ export default function Calendar({ events = [], onAddEvent, onUpdateEvent, onDel
         onClose={() => setShowAddEventModal(false)}
         onSave={handleSaveEvent}
         initialDate={selectedDate || new Date()}
+        initialEvent={editingEvent}
         eventTypes={eventTypes}
       />
 
@@ -496,6 +518,7 @@ export default function Calendar({ events = [], onAddEvent, onUpdateEvent, onDel
         events={selectedDateEvents}
         selectedDate={selectedDate}
         onDelete={handleDeleteEvent}
+        onEdit={handleEditEvent}
         eventTypes={eventTypes}
       />
     </>

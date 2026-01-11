@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { EventTypeConfig, DEFAULT_EVENT_TYPES } from './CalendarTypes';
+import { EventTypeConfig, DEFAULT_EVENT_TYPES, CalendarEvent } from './CalendarTypes';
 
 interface Portal {
   children: React.ReactNode;
@@ -24,6 +24,7 @@ interface AddEventModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (eventData: {
+    id?: string;
     title: string;
     startDate: string;
     startTime: string;
@@ -34,15 +35,17 @@ interface AddEventModalProps {
     allDay: boolean;
   }) => void;
   initialDate?: Date;
+  initialEvent?: CalendarEvent;
   eventTypes?: EventTypeConfig[];
 }
 
-export default function AddEventModal({ 
-  isOpen, 
-  onClose, 
-  onSave, 
+export default function AddEventModal({
+  isOpen,
+  onClose,
+  onSave,
   initialDate,
-  eventTypes = DEFAULT_EVENT_TYPES 
+  initialEvent,
+  eventTypes = DEFAULT_EVENT_TYPES
 }: AddEventModalProps) {
   // Form state
   const [title, setTitle] = useState('');
@@ -53,17 +56,36 @@ export default function AddEventModal({
   const [type, setType] = useState('event');
   const [description, setDescription] = useState('');
   const [allDay, setAllDay] = useState(false);
-  const [errors, setErrors] = useState<{[key: string]: string}>({});
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isSaving, setIsSaving] = useState(false);
 
   // Initialize dates when modal opens
   useEffect(() => {
-    if (isOpen && initialDate) {
-      const dateStr = initialDate.toISOString().split('T')[0];
-      setStartDate(dateStr);
-      setEndDate(dateStr);
+    if (isOpen) {
+      if (initialEvent) {
+        setTitle(initialEvent.title);
+        setDescription(initialEvent.description || '');
+        setType(initialEvent.type);
+
+        const start = new Date(initialEvent.start || new Date());
+        const end = new Date(initialEvent.end || new Date());
+
+        setStartDate(start.toISOString().split('T')[0]);
+        setStartTime(start.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })); // HH:mm
+
+        setEndDate(end.toISOString().split('T')[0]);
+        setEndTime(end.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }));
+
+        // Rough all-day check (if times are 00:00 and 23:59)
+        // Adjust logic if needed based on your conventions
+
+      } else if (initialDate) {
+        const dateStr = initialDate.toISOString().split('T')[0];
+        setStartDate(dateStr);
+        setEndDate(dateStr);
+      }
     }
-  }, [isOpen, initialDate]);
+  }, [isOpen, initialDate, initialEvent]);
 
   // Reset form when modal closes
   useEffect(() => {
@@ -84,7 +106,7 @@ export default function AddEventModal({
   }, [isOpen]);
 
   const validateForm = () => {
-    const newErrors: {[key: string]: string} = {};
+    const newErrors: { [key: string]: string } = {};
 
     // Title is required
     if (!title.trim()) {
@@ -151,7 +173,7 @@ export default function AddEventModal({
   return (
     <Portal>
       {/* Backdrop */}
-      <div 
+      <div
         style={{
           position: 'fixed',
           top: 0,
@@ -166,7 +188,7 @@ export default function AddEventModal({
         }}
         onClick={onClose}
       />
-      
+
       {/* Modal */}
       <div style={{
         position: 'fixed',
@@ -178,7 +200,7 @@ export default function AddEventModal({
         maxWidth: '90vw',
         maxHeight: '90vh'
       }}>
-        <div 
+        <div
           style={{
             backgroundColor: 'white',
             borderRadius: '20px',
@@ -195,14 +217,14 @@ export default function AddEventModal({
             <h2 style={{ margin: 0, fontSize: '24px', fontWeight: '700', color: '#1F2937' }}>
               Add New Event
             </h2>
-            <button 
+            <button
               onClick={onClose}
               disabled={isSaving}
-              style={{ 
-                background: 'none', 
-                border: 'none', 
-                fontSize: '28px', 
-                cursor: isSaving ? 'not-allowed' : 'pointer', 
+              style={{
+                background: 'none',
+                border: 'none',
+                fontSize: '28px',
+                cursor: isSaving ? 'not-allowed' : 'pointer',
                 color: '#6B7280',
                 padding: 0,
                 lineHeight: 1,
@@ -302,9 +324,9 @@ export default function AddEventModal({
             </div>
 
             {/* All Day Toggle */}
-            <div style={{ 
-              marginBottom: '20px', 
-              display: 'flex', 
+            <div style={{
+              marginBottom: '20px',
+              display: 'flex',
               alignItems: 'center',
               padding: '12px 16px',
               backgroundColor: '#F9FAFB',
@@ -323,8 +345,8 @@ export default function AddEventModal({
                   cursor: isSaving ? 'not-allowed' : 'pointer'
                 }}
               />
-              <label 
-                htmlFor="allDay" 
+              <label
+                htmlFor="allDay"
                 style={{
                   fontSize: '14px',
                   fontWeight: '500',

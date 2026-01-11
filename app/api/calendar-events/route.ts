@@ -84,6 +84,8 @@ export async function GET(request: NextRequest) {
           metadata: {
             location: event.location,
             link: event.htmlLink,
+            meetingLink: event.hangoutLink, // Google Meet
+            attendees: event.attendees,
             lastSynced: new Date().toISOString()
           }
         };
@@ -150,6 +152,81 @@ export async function GET(request: NextRequest) {
       { error: 'Failed to fetch calendar events' },
       { status: 500 }
     );
+  }
+}
+
+// PATCH - Update an event
+export async function PATCH(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+
+    if (!session || !session.user?.email) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const { id, title, start, end, description, location } = body;
+
+    if (!id || !title || !start || !end) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    // 1. Update in DB
+    const existingTask = await prisma.task.findUnique({
+      where: { id }
+    });
+
+    if (!existingTask) {
+      return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+    }
+
+    const updatedTask = await prisma.task.update({
+      where: { id },
+      data: {
+        title,
+        description,
+        dueDate: new Date(start),
+        dueTime: new Date(end).toISOString(),
+        metadata: {
+          ...(typeof existingTask.metadata === 'object' ? existingTask.metadata as object : {}),
+          location
+        }
+      }
+    });
+
+    // 2. Update in Google Calendar if linked
+    if (existingTask.googleEventId) {
+      try {
+        const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+        if (user) {
+          const calendar = await getCalendarClient(user.id);
+
+          await calendar.events.patch({
+            calendarId: 'primary',
+            eventId: existingTask.googleEventId,
+            requestBody: {
+              summary: title,
+              description,
+              location,
+              start: {
+                dateTime: new Date(start).toISOString()
+              },
+              end: {
+                dateTime: new Date(end).toISOString()
+              }
+            }
+          });
+        }
+      } catch (googleError) {
+        console.error('Failed to update Google Calendar:', googleError);
+        // Continue, we updated locally at least
+      }
+    }
+
+    return NextResponse.json(updatedTask);
+  } catch (error) {
+    console.error('Error updating event:', error);
+    return NextResponse.json({ error: 'Failed to update event' }, { status: 500 });
   }
 }
 

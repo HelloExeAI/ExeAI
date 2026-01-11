@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Portal from '@/components/ui/Portal';
 
 interface Message {
   id: string;
@@ -22,11 +23,11 @@ export default function MessengerModule({ onAddTodo }: MessengerModuleProps) {
   const [showMessagePopup, setShowMessagePopup] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isConnected, setIsConnected] = useState(false);
-  
+
   useEffect(() => {
     checkConnection();
   }, []);
-  
+
   useEffect(() => {
     if (isConnected) {
       fetchMessages();
@@ -34,7 +35,7 @@ export default function MessengerModule({ onAddTodo }: MessengerModuleProps) {
       setIsLoading(false);
     }
   }, [isConnected]);
-  
+
   const checkConnection = async () => {
     try {
       const res = await fetch('/api/settings');
@@ -47,7 +48,7 @@ export default function MessengerModule({ onAddTodo }: MessengerModuleProps) {
       setIsLoading(false);
     }
   };
-  
+
   const fetchMessages = async () => {
     setIsLoading(true);
     try {
@@ -62,11 +63,11 @@ export default function MessengerModule({ onAddTodo }: MessengerModuleProps) {
       setIsLoading(false);
     }
   };
-  
+
   const handleMessageClick = async (message: Message) => {
     setSelectedMessage(message);
     setShowMessagePopup(true);
-    
+
     if (!message.read) {
       try {
         await fetch(`/api/messages/${message.id}`, {
@@ -80,22 +81,22 @@ export default function MessengerModule({ onAddTodo }: MessengerModuleProps) {
       }
     }
   };
-  
+
   const handleReplyLater = () => {
     if (selectedMessage && onAddTodo) {
       onAddTodo(`Reply to ${selectedMessage.from} (${selectedMessage.platform})`);
       setShowMessagePopup(false);
     }
   };
-  
+
   const getPlatformColor = (platform: string) => {
     return platform === 'whatsapp' ? '#25D366' : '#4A154B';
   };
-  
+
   const getPlatformBgColor = (platform: string) => {
     return platform === 'whatsapp' ? '#E8F5E9' : '#F3E5F5';
   };
-  
+
   const unreadMessages = messages.filter(m => !m.read);
 
   if (!isConnected && !isLoading) {
@@ -310,147 +311,151 @@ export default function MessengerModule({ onAddTodo }: MessengerModuleProps) {
       )}
 
       {showMessagePopup && selectedMessage && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000
-          }}
-        >
+        <Portal>
           <div
             style={{
-              backgroundColor: 'white',
-              borderRadius: '16px',
-              width: '90%',
-              maxWidth: '600px',
-              maxHeight: '80vh',
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              width: '100vw',
+              height: '100vh',
+              backgroundColor: 'rgba(0,0,0,0.5)',
               display: 'flex',
-              flexDirection: 'column',
-              boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)'
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 99999
             }}
+            onClick={() => setShowMessagePopup(false)}
           >
             <div
+              onClick={e => e.stopPropagation()}
               style={{
-                padding: '20px 24px',
-                borderBottom: '1px solid #E5E7EB',
-                backgroundColor: getPlatformBgColor(selectedMessage.platform)
+                backgroundColor: 'white',
+                borderRadius: '16px',
+                width: '90%',
+                maxWidth: '600px',
+                maxHeight: '80vh',
+                display: 'flex',
+                flexDirection: 'column',
+                boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)'
               }}
             >
               <div
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  marginBottom: '8px'
+                  padding: '20px 24px',
+                  borderBottom: '1px solid #E5E7EB',
+                  backgroundColor: getPlatformBgColor(selectedMessage.platform)
                 }}
               >
                 <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    marginBottom: '8px'
+                  }}
+                >
+                  <div
+                    style={{
+                      backgroundColor: getPlatformColor(selectedMessage.platform),
+                      color: 'white',
+                      fontSize: '10px',
+                      fontWeight: '700',
+                      padding: '4px 8px',
+                      borderRadius: '6px',
+                      textTransform: 'uppercase'
+                    }}
+                  >
+                    {selectedMessage.platform}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: '18px',
+                      fontWeight: '700',
+                      color: '#1F2937'
+                    }}
+                  >
+                    {selectedMessage.from}
+                  </div>
+                </div>
+                <div
+                  style={{
+                    fontSize: '12px',
+                    color: '#6B7280'
+                  }}
+                >
+                  {selectedMessage.date.toLocaleString()}
+                </div>
+              </div>
+
+              <div
+                style={{
+                  padding: '24px',
+                  overflowY: 'auto',
+                  flex: 1,
+                  backgroundColor: '#F9FAFB'
+                }}
+              >
+                <div
+                  style={{
+                    backgroundColor: 'white',
+                    padding: '16px',
+                    borderRadius: '12px',
+                    fontSize: '14px',
+                    lineHeight: '1.6',
+                    color: '#1F2937',
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word'
+                  }}
+                >
+                  {selectedMessage.content}
+                </div>
+              </div>
+
+              <div
+                style={{
+                  padding: '12px 24px',
+                  borderTop: '1px solid #E5E7EB',
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  gap: '10px',
+                  backgroundColor: 'white'
+                }}
+              >
+                <button
+                  onClick={handleReplyLater}
+                  style={{
+                    backgroundColor: '#F4B000',
+                    color: 'white',
+                    border: 'none',
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer'
+                  }}
+                >
+                  ⏰ Reply Later
+                </button>
+                <button
+                  onClick={() => setShowMessagePopup(false)}
                   style={{
                     backgroundColor: getPlatformColor(selectedMessage.platform),
                     color: 'white',
-                    fontSize: '10px',
-                    fontWeight: '700',
-                    padding: '4px 8px',
-                    borderRadius: '6px',
-                    textTransform: 'uppercase'
+                    border: 'none',
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer'
                   }}
                 >
-                  {selectedMessage.platform}
-                </div>
-                <div
-                  style={{
-                    fontSize: '18px',
-                    fontWeight: '700',
-                    color: '#1F2937'
-                  }}
-                >
-                  {selectedMessage.from}
-                </div>
+                  Close
+                </button>
               </div>
-              <div
-                style={{
-                  fontSize: '12px',
-                  color: '#6B7280'
-                }}
-              >
-                {selectedMessage.date.toLocaleString()}
-              </div>
-            </div>
-            
-            <div
-              style={{
-                padding: '24px',
-                overflowY: 'auto',
-                flex: 1,
-                backgroundColor: '#F9FAFB'
-              }}
-            >
-              <div
-                style={{
-                  backgroundColor: 'white',
-                  padding: '16px',
-                  borderRadius: '12px',
-                  fontSize: '14px',
-                  lineHeight: '1.6',
-                  color: '#1F2937',
-                  whiteSpace: 'pre-wrap',
-                  wordBreak: 'break-word'
-                }}
-              >
-                {selectedMessage.content}
-              </div>
-            </div>
-            
-            <div
-              style={{
-                padding: '12px 24px',
-                borderTop: '1px solid #E5E7EB',
-                display: 'flex',
-                justifyContent: 'flex-end',
-                gap: '10px',
-                backgroundColor: 'white'
-              }}
-            >
-              <button
-                onClick={handleReplyLater}
-                style={{
-                  backgroundColor: '#F4B000',
-                  color: 'white',
-                  border: 'none',
-                  padding: '8px 16px',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: 'pointer'
-                }}
-              >
-                ⏰ Reply Later
-              </button>
-              <button
-                onClick={() => setShowMessagePopup(false)}
-                style={{
-                  backgroundColor: getPlatformColor(selectedMessage.platform),
-                  color: 'white',
-                  border: 'none',
-                  padding: '8px 16px',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: 'pointer'
-                }}
-              >
-                Close
-              </button>
             </div>
           </div>
-        </div>
+        </Portal>
       )}
     </div>
   );

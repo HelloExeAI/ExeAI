@@ -57,6 +57,7 @@ export interface CalendarEvent {
   location?: string;
   sourceNoteId?: string;
   color?: string;
+  metadata?: any;
 }
 
 // NEW: Email Interface

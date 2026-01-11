@@ -26,23 +26,25 @@ interface EventDetailsModalProps {
   events: CalendarEvent[];
   selectedDate: Date | null;
   onDelete?: (eventId: string) => void;
+  onEdit?: (event: CalendarEvent) => void;
   eventTypes?: EventTypeConfig[];
 }
 
-export default function EventDetailsModal({ 
-  isOpen, 
-  onClose, 
-  events, 
+export default function EventDetailsModal({
+  isOpen,
+  onClose,
+  events,
   selectedDate,
   onDelete,
-  eventTypes = DEFAULT_EVENT_TYPES 
+  onEdit,
+  eventTypes = DEFAULT_EVENT_TYPES
 }: EventDetailsModalProps) {
   if (!isOpen || events.length === 0) return null;
 
   return (
     <Portal>
       {/* Backdrop */}
-      <div 
+      <div
         style={{
           position: 'fixed',
           top: 0,
@@ -57,7 +59,7 @@ export default function EventDetailsModal({
         }}
         onClick={onClose}
       />
-      
+
       {/* Modal */}
       <div style={{
         position: 'fixed',
@@ -69,7 +71,7 @@ export default function EventDetailsModal({
         maxWidth: '90vw',
         maxHeight: '85vh'
       }}>
-        <div 
+        <div
           style={{
             backgroundColor: 'white',
             borderRadius: '20px',
@@ -86,13 +88,13 @@ export default function EventDetailsModal({
             <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '700', color: '#1F2937' }}>
               {selectedDate?.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) || 'Event Details'}
             </h3>
-            <button 
+            <button
               onClick={onClose}
-              style={{ 
-                background: 'none', 
-                border: 'none', 
-                fontSize: '28px', 
-                cursor: 'pointer', 
+              style={{
+                background: 'none',
+                border: 'none',
+                fontSize: '28px',
+                cursor: 'pointer',
                 color: '#6B7280',
                 padding: 0,
                 lineHeight: 1
@@ -105,7 +107,7 @@ export default function EventDetailsModal({
             {events.map(event => {
               const eventTypeConfig = eventTypes.find(et => et.type === event.type);
               return (
-                <div 
+                <div
                   key={event.id}
                   style={{
                     padding: '16px',
@@ -125,14 +127,58 @@ export default function EventDetailsModal({
                           ⏰ {event.time}
                         </div>
                       )}
+                      {event.location && (
+                        <div style={{ fontSize: '13px', color: '#6B7280', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          📍 {event.location}
+                        </div>
+                      )}
+
+                      {event.meetingLink && (
+                        <a
+                          href={event.meetingLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            backgroundColor: '#2563EB',
+                            color: 'white',
+                            padding: '6px 12px',
+                            borderRadius: '6px',
+                            fontSize: '13px',
+                            fontWeight: '600',
+                            textDecoration: 'none',
+                            marginTop: '8px',
+                            marginBottom: '4px'
+                          }}
+                        >
+                          🎥 Join Meeting
+                        </a>
+                      )}
+
+                      {event.attendees && event.attendees.length > 0 && (
+                        <div style={{ marginTop: '8px', fontSize: '12px' }}>
+                          <div style={{ fontWeight: '600', color: '#4B5563', marginBottom: '4px' }}>Attendees:</div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            {event.attendees.map((att: any, idx: number) => (
+                              <div key={idx} style={{ color: '#6B7280', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <span>👤</span> {att.email} {att.responseStatus === 'accepted' ? '✅' : ''}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
                       {event.description && (
                         <div style={{ fontSize: '14px', color: '#6B7280', marginTop: '8px', lineHeight: '1.5' }}>
                           {event.description}
                         </div>
                       )}
-                      <div style={{ 
-                        fontSize: '12px', 
-                        color: event.color, 
+                      <div style={{
+                        fontSize: '12px',
+                        color: event.color,
                         fontWeight: '600',
                         marginTop: '8px',
                         textTransform: 'uppercase',
@@ -140,9 +186,31 @@ export default function EventDetailsModal({
                       }}>
                         {eventTypeConfig?.label}
                       </div>
-                      
-                      {onDelete && (
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
+
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px', gap: '8px' }}>
+                        {onEdit && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onEdit(event);
+                            }}
+                            style={{
+                              padding: '6px 12px',
+                              borderRadius: '6px',
+                              border: '1px solid #E5E7EB',
+                              backgroundColor: 'white',
+                              color: '#374151',
+                              fontSize: '12px',
+                              fontWeight: '600',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            Edit
+                          </button>
+                        )}
+
+                        {onDelete && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -161,17 +229,11 @@ export default function EventDetailsModal({
                               cursor: 'pointer',
                               transition: 'all 0.2s'
                             }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.backgroundColor = '#FEE2E2';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.backgroundColor = '#FEF2F2';
-                            }}
                           >
                             Delete
                           </button>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
