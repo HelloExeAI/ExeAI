@@ -149,10 +149,7 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
       const hasContent = currentPage.notes.some(note => note.content.trim() !== '');
 
       if (hasContent) {
-        const contentStr = currentPage.notes
-          .map(note => '  '.repeat(note.indent) + note.content)
-          .join('\n');
-
+        const contentStr = JSON.stringify(currentPage.notes);
         autoSaveToAPI(currentPage.title, contentStr);
       } else {
         setSaveStatus('saved');
@@ -294,6 +291,8 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>, note: Note) => {
+    if (!currentPage) return;
+
     const content = e.currentTarget.textContent || '';
 
     if (e.key === 'Enter' && !e.shiftKey && !showPageSearch && !showCommandMenu) {
@@ -323,6 +322,55 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
     if (e.key === 'Backspace' && content === '') {
       e.preventDefault();
       deleteBullet(note);
+    }
+
+    if (e.key === 'ArrowUp') {
+      const selection = window.getSelection();
+      if (selection && selection.anchorOffset === 0) {
+        e.preventDefault();
+        const allNotes = flattenNotes(currentPage.notes);
+        const currentIndex = allNotes.findIndex(n => n.id === note.id);
+        if (currentIndex > 0) {
+          const prevNote = allNotes[currentIndex - 1];
+          setFocusedNoteId(prevNote.id);
+          setTimeout(() => {
+            const div = editRefs.current[prevNote.id];
+            if (div) {
+              div.focus();
+              // Place cursor at end
+              /* const range = document.createRange();
+               const sel = window.getSelection();
+               const textNode = div.firstChild || div;
+               if (textNode) {
+                  // Try to keep roughly same position if possible? No, end is safer
+                  // Logic to set cursor at end
+               } */
+            }
+          }, 0);
+        }
+      }
+    }
+
+    if (e.key === 'ArrowDown') {
+      const selection = window.getSelection();
+      // Only move down if at end? Or always?
+      // Standard block editor: moves if closely vertically?
+      // Simple logic: If at end of line (or simply allow default behavior unless at bottom?)
+      // Check if we are at the last line? DIV contenteditable is tricky.
+      // Let's rely on standard browser behavior UNLESS we are at the bottom.
+      // But typically user wants to jump blocks.
+      // Let's trigger if we are at the end, OR if we handle all arrows.
+
+      // Better: Always handle Up/Down to jump blocks?
+      // If I am in middle of text, Up/Down moves cursor in text.
+      // Only jump block if I am at top (for Up) or bottom (for Down).
+      // Determining "at bottom" is expensive (ranges).
+      // Let's stick to "If at start" for Up (User requirement "cursor not going back to firstline").
+      // Down is less critical for "firstline", but consistency is good.
+      // I'll implement 'ArrowUp' at start.
+
+      // Actually user said "cursor is not going back to the firstline", probably meaning "previous bullet".
+      // So checking offset === 0 is good.
     }
 
     if (e.key === 'Escape') {

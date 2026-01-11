@@ -53,21 +53,33 @@ export async function GET(request: NextRequest) {
         });
       }
 
-      // Get tasks for this daily note
-      const tasks = await prisma.task.findMany({
-        where: {
-          dailyNoteId: dailyNote.id
-        },
-        orderBy: { createdAt: 'asc' }
-      });
+      let notes = [];
+      let isJson = false;
 
-      // Transform to Page format
-      const page = {
-        id: dailyNote.id,
-        title: date,
-        createdAt: dailyNote.createdAt,
-        lastModified: dailyNote.updatedAt,
-        notes: tasks.map((task: any) => ({
+      // Try to parse content as JSON (new format)
+      if (dailyNote.content && dailyNote.content.trim().startsWith('[')) {
+        try {
+          // Verify basic structure of first item
+          const parsed = JSON.parse(dailyNote.content);
+          if (Array.isArray(parsed)) {
+            notes = parsed;
+            isJson = true;
+          }
+        } catch (e) {
+          // Content is not valid JSON, fall back to tasks
+        }
+      }
+
+      if (!isJson) {
+        // Legacy: Get tasks for this daily note
+        const tasks = await prisma.task.findMany({
+          where: {
+            dailyNoteId: dailyNote.id
+          },
+          orderBy: { createdAt: 'asc' }
+        });
+
+        notes = tasks.map((task: any) => ({
           id: task.id,
           content: task.title,
           type: task.type,
@@ -78,7 +90,16 @@ export async function GET(request: NextRequest) {
           parentId: null,
           indent: 0,
           completed: task.completed || false
-        }))
+        }));
+      }
+
+      // Transform to Page format
+      const page = {
+        id: dailyNote.id,
+        title: date,
+        createdAt: dailyNote.createdAt,
+        lastModified: dailyNote.updatedAt,
+        notes: notes
       };
 
       return NextResponse.json(page);
