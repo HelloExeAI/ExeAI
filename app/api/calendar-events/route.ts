@@ -110,13 +110,27 @@ export async function GET(request: NextRequest) {
       console.log(`✅ Successfully synced ${syncedCount} events`);
 
     } catch (syncError: any) {
-      // Log but don't fail the request - return local events
-      console.warn('⚠️ Google Calendar sync skipped/failed:', syncError);
+      console.warn('⚠️ Google Calendar sync failed:', syncError);
 
-      // If we are in dev mode, maybe return this error?
-      // For now, let's just log deeply
-      if (syncError.response) {
-        console.error('Google API Error:', syncError.response.data);
+      const errorMessage = syncError?.message || JSON.stringify(syncError);
+
+      // Check for auth errors
+      if (
+        errorMessage.includes('invalid_grant') ||
+        errorMessage.includes('No access token') ||
+        errorMessage.includes('No refresh token') ||
+        errorMessage.includes('invalid_request') ||
+        (syncError.response && syncError.response.status === 401)
+      ) {
+        console.error('🔒 Auth error detected. Disconnecting calendar to force re-auth.');
+        try {
+          await prisma.userSettings.update({
+            where: { userId: user.id },
+            data: { calendarGoogleConnected: false }
+          });
+        } catch (dbErr) {
+          console.error('Failed to update disconnect status:', dbErr);
+        }
       }
     }
 

@@ -46,7 +46,7 @@ export async function GET(
   }
 }
 
-// PATCH - Update a note (for completing todos, editing content, etc.)
+// PATCH - Update a generic note/task
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -67,41 +67,55 @@ export async function PATCH(
     }
 
     const { id } = await params;
-    // Verify the note belongs to this user
-    const existingNote = await prisma.dailyNote.findFirst({
+    // Verify the task belongs to this user
+    const existingTask = await prisma.task.findFirst({
       where: {
         id,
         userId: user.id
       }
     });
 
-    if (!existingNote) {
-      return NextResponse.json({ error: 'Note not found' }, { status: 404 });
+    if (!existingTask) {
+      return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
 
     const body = await request.json();
-    const { content, metadata } = body;
+    const { content, metadata, completed, priority, dueDate, description } = body;
 
-    // Update the note
-    const updatedNote = await prisma.dailyNote.update({
+    const updateData: any = {
+      title: content || existingTask.title,
+      description: description || existingTask.description,
+      priority: priority || existingTask.priority,
+      metadata: metadata !== undefined ? metadata : existingTask.metadata,
+      updatedAt: new Date(),
+    };
+
+    if (completed !== undefined) {
+      updateData.completed = completed;
+      updateData.completedAt = completed ? new Date() : null;
+    }
+
+    if (dueDate) {
+      updateData.dueDate = new Date(dueDate);
+    }
+
+    // Update the task
+    const updatedTask = await prisma.task.update({
       where: { id },
-      data: {
-        content: content || existingNote.content,
-        metadata: metadata !== undefined ? metadata : existingNote.metadata
-      }
+      data: updateData
     });
 
-    return NextResponse.json(updatedNote);
+    return NextResponse.json(updatedTask);
   } catch (error) {
-    console.error('Error updating note:', error);
+    console.error('Error updating task:', error);
     return NextResponse.json(
-      { error: 'Failed to update note' },
+      { error: 'Failed to update task' },
       { status: 500 }
     );
   }
 }
 
-// DELETE - Delete a note
+// DELETE - Delete a task
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -122,28 +136,26 @@ export async function DELETE(
     }
 
     const { id } = await params;
-    // Verify the note belongs to this user
-    const existingNote = await prisma.dailyNote.findFirst({
-      where: {
-        id,
-        userId: user.id
-      }
+
+    // Verify ownership
+    const existingTask = await prisma.task.findFirst({
+      where: { id, userId: user.id }
     });
 
-    if (!existingNote) {
-      return NextResponse.json({ error: 'Note not found' }, { status: 404 });
+    if (!existingTask) {
+      return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
 
-    // Delete the note
-    await prisma.dailyNote.delete({
+    // Delete the task
+    await prisma.task.delete({
       where: { id }
     });
 
-    return NextResponse.json({ message: 'Note deleted successfully' });
+    return NextResponse.json({ message: 'Task deleted successfully' });
   } catch (error) {
-    console.error('Error deleting note:', error);
+    console.error('Error deleting task:', error);
     return NextResponse.json(
-      { error: 'Failed to delete note' },
+      { error: 'Failed to delete task' },
       { status: 500 }
     );
   }
