@@ -70,3 +70,5 @@ next-env.d.ts
 .env.bak
 .env.local.bak
 nextauth-debug.log.old
+
+whatsapp_auth/

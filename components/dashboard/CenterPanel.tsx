@@ -363,14 +363,18 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
             const div = editRefs.current[prevNote.id];
             if (div) {
               div.focus();
-              // Place cursor at end
-              /* const range = document.createRange();
-               const sel = window.getSelection();
-               const textNode = div.firstChild || div;
-               if (textNode) {
-                  // Try to keep roughly same position if possible? No, end is safer
-                  // Logic to set cursor at end
-               } */
+              // Place cursor at end of previous note
+              const range = document.createRange();
+              const sel = window.getSelection();
+              const textNode = div.firstChild;
+              if (textNode) {
+                range.setStart(textNode, textNode.textContent?.length || 0);
+              } else {
+                range.setStart(div, 0);
+              }
+              range.collapse(true);
+              sel?.removeAllRanges();
+              sel?.addRange(range);
             }
           }, 0);
         }
@@ -379,24 +383,35 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
 
     if (e.key === 'ArrowDown') {
       const selection = window.getSelection();
-      // Only move down if at end? Or always?
-      // Standard block editor: moves if closely vertically?
-      // Simple logic: If at end of line (or simply allow default behavior unless at bottom?)
-      // Check if we are at the last line? DIV contenteditable is tricky.
-      // Let's rely on standard browser behavior UNLESS we are at the bottom.
-      // But typically user wants to jump blocks.
-      // Let's trigger if we are at the end, OR if we handle all arrows.
+      const content = e.currentTarget.textContent || '';
 
-      // Better: Always handle Up/Down to jump blocks?
-      // If I am in middle of text, Up/Down moves cursor in text.
-      // Only jump block if I am at top (for Up) or bottom (for Down).
-      // Determining "at bottom" is expensive (ranges).
-      // Let's stick to "If at start" for Up (User requirement "cursor not going back to firstline").
-      // Down is less critical for "firstline", but consistency is good.
-      // I'll implement 'ArrowUp' at start.
-
-      // Actually user said "cursor is not going back to the firstline", probably meaning "previous bullet".
-      // So checking offset === 0 is good.
+      if (selection && selection.anchorOffset === content.length) {
+        e.preventDefault();
+        const allNotes = flattenNotes(currentPage.notes);
+        const currentIndex = allNotes.findIndex(n => n.id === note.id);
+        if (currentIndex < allNotes.length - 1) {
+          const nextNote = allNotes[currentIndex + 1];
+          setFocusedNoteId(nextNote.id);
+          setTimeout(() => {
+            const div = editRefs.current[nextNote.id];
+            if (div) {
+              div.focus();
+              // Place cursor at start of next note
+              const range = document.createRange();
+              const sel = window.getSelection();
+              const textNode = div.firstChild;
+              if (textNode) {
+                range.setStart(textNode, 0);
+              } else {
+                range.setStart(div, 0);
+              }
+              range.collapse(true);
+              sel?.removeAllRanges();
+              sel?.addRange(range);
+            }
+          }, 0);
+        }
+      }
     }
 
     if (e.key === 'Escape') {
@@ -597,6 +612,7 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
     }, 0);
   };
 
+  /* Updated Handle Command Select to add Calendar Events */
   const handleCommandSelect = (command: CommandOption, noteId: string) => {
     const editableDiv = editRefs.current[noteId];
     if (!editableDiv) return;
@@ -625,7 +641,26 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
     setShowCommandMenu(false);
     setCommandSearchQuery('');
 
-    showSuccessToast(`Added to ${command.destination}`);
+    /* Logic to add to Calendar if destination is Calendar */
+    if (onAddCalendarEvent && ['meeting', 'event', 'travel', 'birthday'].includes(command.command)) {
+      // Default to current date and next hour
+      const start = new Date(currentDate);
+      start.setHours(new Date().getHours() + 1, 0, 0, 0);
+      const end = new Date(start);
+      end.setHours(start.getHours() + 1);
+
+      onAddCalendarEvent({
+        title: newContent || command.label,
+        start: start,
+        end: end,
+        type: command.command as any,
+        description: '',
+        sourceNoteId: noteId
+      });
+      showSuccessToast(`Added to ${command.destination} for today`);
+    } else {
+      showSuccessToast(`Added to ${command.destination}`);
+    }
 
     setTimeout(() => {
       editableDiv.focus();
@@ -694,14 +729,11 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
             suppressContentEditableWarning={true}
             onInput={(e) => handleContentInput(e, note.id)}
             onKeyDown={(e) => handleKeyDown(e, note)}
-            onFocus={() => setFocusedNoteId(note.id)}
-            onBlur={() => {
-              setTimeout(() => {
-                if (!showPageSearch && !showCommandMenu) {
-                  setFocusedNoteId(null);
-                }
-              }, 200);
+            onFocus={() => {
+              /* Clean up any pending blur timeout to avoid race conditions */
+              setFocusedNoteId(note.id);
             }}
+            /* Removed onBlur to prevent cursor jumping/focus loss issues */
             style={{
               flex: 1,
               fontSize: '15px',

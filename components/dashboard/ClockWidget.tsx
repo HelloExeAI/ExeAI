@@ -218,8 +218,71 @@ export default function ClockWidget() {
     }
   };
 
-  const [timeStr, period] = displayTime.split(' '); // Split "10:30 PM"
+  // Timer State
+  const [timerMinutes, setTimerMinutes] = useState(5); // Default start, updated by settings
+  const [timerSeconds, setTimerSeconds] = useState(0);
+  const [isTimerRunning, setIsTimerRunning] = useState(false);
 
+  // Update default timer duration when settings load
+  useEffect(() => {
+    if (settingsLoaded) {
+      setTimerMinutes(Math.floor(settings.timerDefaultDuration / 60));
+      setTimerSeconds(settings.timerDefaultDuration % 60);
+    }
+  }, [settingsLoaded, settings.timerDefaultDuration]);
+
+  // Timer Logic
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+
+    if (isTimerRunning) {
+      interval = setInterval(() => {
+        if (timerSeconds === 0) {
+          if (timerMinutes === 0) {
+            // Timer Complete
+            setIsTimerRunning(false);
+
+            // Play Sound
+            if (settings.timerSoundEnabled) {
+              const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUajk77RgGwU7k9n0yXcoBC15yO/glEILE2K39OyrUxIIRZ/h8rltIQUrhM/y2Yk2CBxqvvDknE4MDlGo5O+zYBoFPJTa9Ml3JwQtesjv4JRCCxNit/Tsq1MSCEWf4fK5bSEFK4TP8tmJNggcar7w5JxODA5RqOTvs2AaBTyU2vTJdycELXrI7+CUQgsUYrj07KtTEghFn+HyuW0hBSuEz/LZiTYIHGq+8OScTgwOUajk77NgGgU8lNr0yXcnBC16yO/glEILFGK49OyrUxIIRZ/h8rltIQUrhM/y2Yk2CBxqvvDknE4MDlGo5O+zYBoFPJTa9Ml3JwQtesjv4JRCCxRiuPTsq1MSCEWf4fK5bSEFK4TP8tmJNggcar7w5JxODA5RqOTvs2AaBTyU2vTJdycELXrI7+CUQgsUYrj07KtTEghFn+HyuW0hBSuEz/LZiTYIHGq+8OScTgwOUajk77NgGgU8lNr0yXcnBC16yO/glEILFGK49OyrUxIIRZ/h8rltIQUrhM/y2Yk2CBxqvvDknE4MDlGo5O+zYBoFPJTa9Ml3JwQtesjv4JRCCxRiuPTsq1');
+              audio.play().catch(e => console.log('Audio play failed:', e));
+            }
+
+            // Show Notification
+            if ('Notification' in window && Notification.permission === 'granted') {
+              new Notification('Timer Complete! ⏰', { body: 'Your timer has finished!' });
+            }
+
+            // Open Modal to show finished state
+            setShowTimer(true);
+
+          } else {
+            setTimerMinutes(m => m - 1);
+            setTimerSeconds(59);
+          }
+        } else {
+          setTimerSeconds(s => s - 1);
+        }
+      }, 1000);
+    }
+
+    return () => clearInterval(interval);
+  }, [isTimerRunning, timerMinutes, timerSeconds, settings.timerSoundEnabled]);
+
+  const handleTimerStart = () => setIsTimerRunning(true);
+  const handleTimerPause = () => setIsTimerRunning(false);
+  const handleTimerReset = () => {
+    setIsTimerRunning(false);
+    setTimerMinutes(Math.floor(settings.timerDefaultDuration / 60));
+    setTimerSeconds(settings.timerDefaultDuration % 60);
+  };
+  const handleSetDuration = (durationInSeconds: number) => {
+    setIsTimerRunning(false);
+    setTimerMinutes(Math.floor(durationInSeconds / 60));
+    setTimerSeconds(durationInSeconds % 60);
+  };
+
+  const [timeStr, period] = displayTime.split(' '); // Split "10:30 PM"
 
   return (
     <>
@@ -244,7 +307,7 @@ export default function ClockWidget() {
           {/* Content */}
           <div style={{
             position: 'relative',
-            zIndex: 1,
+            zIndex: 10,
             display: 'flex',
             alignItems: 'center',
             gap: '14px',
@@ -257,31 +320,37 @@ export default function ClockWidget() {
               letterSpacing: '0.05em',
               opacity: 0.85,
               textTransform: 'uppercase',
-              minWidth: '55px'
+              width: '55px',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
             }}>
               {settings.location.split(',')[0]}
             </div>
 
-            {/* Time Display */}
+            {/* Time Display - FIXED WIDTH & MONOSPACE */}
             <div style={{
               display: 'flex',
               alignItems: 'baseline',
               gap: '4px',
-              minWidth: settings.showSeconds ? '110px' : '75px'
+              width: settings.showSeconds ? '110px' : '75px',
+              justifyContent: 'center'
             }}>
               <span style={{
                 fontSize: '18px',
                 fontWeight: '600',
                 lineHeight: 1,
                 letterSpacing: '-0.02em',
-                fontVariantNumeric: 'tabular-nums'
+                fontVariantNumeric: 'tabular-nums',
+                fontFamily: 'monospace' /* Force monospace for stability */
               }}>
                 {timeStr}
               </span>
               <span style={{
                 fontSize: '11px',
                 fontWeight: '600',
-                opacity: 0.9
+                opacity: 0.9,
+                width: '18px'
               }}>
                 {period}
               </span>
@@ -324,8 +393,8 @@ export default function ClockWidget() {
             <button
               onClick={() => setShowTimer(true)}
               style={{
-                background: 'rgba(255,255,255,0.2)',
-                border: 'none',
+                background: isTimerRunning ? 'rgba(239, 68, 68, 0.4)' : 'rgba(255,255,255,0.2)',
+                border: isTimerRunning ? '1px solid #EF4444' : 'none',
                 color: 'white',
                 cursor: 'pointer',
                 fontSize: '14px',
@@ -338,8 +407,12 @@ export default function ClockWidget() {
                 transition: 'all 0.2s',
                 fontWeight: '600'
               }}
-              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.35)'}
-              onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
+              onMouseEnter={(e) => {
+                if (!isTimerRunning) e.currentTarget.style.background = 'rgba(255,255,255,0.35)';
+              }}
+              onMouseLeave={(e) => {
+                if (!isTimerRunning) e.currentTarget.style.background = 'rgba(255,255,255,0.2)';
+              }}
               title="Timer"
             >
               ⏱️
@@ -352,8 +425,13 @@ export default function ClockWidget() {
       <TimerModal
         isOpen={showTimer}
         onClose={() => setShowTimer(false)}
-        defaultDuration={settings.timerDefaultDuration}
-        soundEnabled={settings.timerSoundEnabled}
+        minutes={timerMinutes}
+        seconds={timerSeconds}
+        isRunning={isTimerRunning}
+        onStart={handleTimerStart}
+        onPause={handleTimerPause}
+        onReset={handleTimerReset}
+        onSetDuration={handleSetDuration}
       />
     </>
   );
