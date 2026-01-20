@@ -110,7 +110,7 @@ model VerificationToken {
 model DailyNote {
   id        String   @id @default(cuid())
   userId    String
-  date      DateTime @unique // One note per day
+  date      DateTime // One note per day
   content   String   @db.Text // Raw HTML/Markdown content
   metadata  Json?    // Store additional data (tags, mentions, etc.)
   createdAt DateTime @default(now())
@@ -120,6 +120,7 @@ model DailyNote {
   tasks Task[] // Tasks created from this daily note
 
   @@index([userId, date])
+  @@unique([userId, date])
   @@map("daily_notes")
 }
 
