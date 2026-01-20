@@ -43,6 +43,11 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
   const [pageSearchQuery, setPageSearchQuery] = useState('');
 
   const getOrCreatePage = (title: string): Page => {
+    // Note: This finds the page in the CURRENT closure state.
+    // Ideally we should check if it exists in the functional update, but since we return the object immediately,
+    // we assume the local find is good enough for current interaction.
+    // However, for the state update, we MUST use functional update to avoid race conditions.
+
     let page = allPages.find(p => p.title === title);
 
     if (!page) {
@@ -53,7 +58,16 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
         lastModified: new Date(),
         notes: []
       };
-      setAllPages([...allPages, page]);
+      // Use functional update to ensure we don't overwrite other parallel updates
+      const newPage = page; // capture for closure
+      setAllPages(prev => {
+        // Double check existence inside the updater to be safe
+        if (prev.find(p => p.title === title)) return prev;
+        return [...prev, newPage];
+      });
+      // We manually update local state for immediate use in this render cycle if needed,
+      // though typically we should wait for rerender. 
+      // Because we return 'page' object which is valid, it's fine.
     }
 
     return page;
@@ -581,7 +595,8 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
     };
 
     setCurrentPage(updatedPage);
-    setAllPages(allPages.map(p => p.id === updatedPage.id ? updatedPage : p));
+    // Use functional update to prevent stale state overwrites
+    setAllPages(prev => prev.map(p => p.id === updatedPage.id ? updatedPage : p));
   };
 
   const handlePageLinkSelect = (pageTitle: string, noteId: string) => {
@@ -798,7 +813,7 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
           onContentInput={handleContentInput}
           onKeyDown={handleKeyDown}
           onFocus={setFocusedNoteId}
-          onBlur={() => setFocusedNoteId(null)}
+          onBlur={() => { /* Removing explicit null to prevent cursor jumps */ }}
           renderBulletTree={renderBulletTree}
         />
 

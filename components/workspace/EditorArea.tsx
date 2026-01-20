@@ -25,17 +25,21 @@ export default function EditorArea({
   renderBulletTree
 }: EditorAreaProps) {
   // Auto-focus first note when component mounts
+  // Auto-focus removed to prevent fighting with parent state
+  // Parent component (CenterPanel) manages initial focus via focusedNoteId
   useEffect(() => {
-    if (notes.length > 0 && !focusedNoteId) {
-      const firstNote = notes[0];
-      const firstDiv = editRefs.current[firstNote.id];
-      if (firstDiv) {
-        setTimeout(() => {
-          firstDiv.focus();
-        }, 100);
+    // Only focus if specifically requested and valid
+    if (focusedNoteId && editRefs.current[focusedNoteId]) {
+      const el = editRefs.current[focusedNoteId];
+      if (document.activeElement !== el) {
+        // We let the parent handle the actual focus call via its own effect,
+        // or we can do it here, but CenterPanel already has a focus effect.
+        // So this effect is strictly for "first load" if we wanted it, but
+        // CenterPanel handles that too.
+        // Leaving empty or removing reduces conflict.
       }
     }
-  }, [notes, focusedNoteId, editRefs]);
+  }, [focusedNoteId, editRefs]);
 
   return (
     <div style={{

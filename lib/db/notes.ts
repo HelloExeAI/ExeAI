@@ -48,7 +48,10 @@ export async function upsertDailyNote(
 
     return await prisma.dailyNote.upsert({
       where: {
-        date: startOfDay,
+        userId_date: {
+          userId,
+          date: startOfDay,
+        }
       },
       update: {
         content,

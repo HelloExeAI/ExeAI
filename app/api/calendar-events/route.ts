@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
             location: event.location,
             link: event.htmlLink,
             meetingLink: event.hangoutLink, // Google Meet
-            attendees: event.attendees,
+            attendees: event.attendees as any,
             lastSynced: new Date().toISOString()
           }
         };
