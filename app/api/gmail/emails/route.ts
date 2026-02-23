@@ -32,7 +32,7 @@ export async function GET() {
     // The UI filters `emails.filter(e => !e.read)`. So let's fetch recent inbox.
     const listRes = await gmail.users.messages.list({
       userId: 'me',
-      q: 'in:inbox',
+      q: 'is:unread in:inbox',
       maxResults: 10,
     });
 

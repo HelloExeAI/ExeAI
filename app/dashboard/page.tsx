@@ -29,40 +29,40 @@ export default function Dashboard() {
 
   const loadUserData = async () => {
     try {
+      const mapEvents = (events: any[]) => events.map((event: any) => {
+        const startDate = new Date(event.dueDate);
+        let endDate = new Date(startDate);
+        if (event.dueTime) {
+          const parsedEnd = new Date(event.dueTime);
+          if (!isNaN(parsedEnd.getTime())) {
+            endDate = parsedEnd;
+          }
+        } else {
+          endDate.setHours(endDate.getHours() + 1);
+        }
+        return {
+          ...event,
+          start: startDate,
+          end: endDate,
+          type: event.type || 'event'
+        };
+      });
+
+      // Background sync to pull newest Google Calendar changes without blocking the user
+      // Fired concurrently for faster eventual UI refresh
+      fetch('/api/calendar-events?sync=true')
+        .then(res => res.json())
+        .then(syncedData => {
+          if (Array.isArray(syncedData)) {
+            setCalendarEvents(mapEvents(syncedData));
+          }
+        })
+        .catch(err => console.error('Background sync failed:', err));
+
       const eventsResponse = await fetch('/api/calendar-events');
       if (eventsResponse.ok) {
         const eventsData = await eventsResponse.json();
-
-        const mapEvents = (events: any[]) => events.map((event: any) => {
-          const startDate = new Date(event.dueDate);
-          let endDate = new Date(startDate);
-          if (event.dueTime) {
-            const parsedEnd = new Date(event.dueTime);
-            if (!isNaN(parsedEnd.getTime())) {
-              endDate = parsedEnd;
-            }
-          } else {
-            endDate.setHours(endDate.getHours() + 1);
-          }
-          return {
-            ...event,
-            start: startDate,
-            end: endDate,
-            type: event.type || 'event'
-          };
-        });
-
         setCalendarEvents(mapEvents(eventsData));
-
-        // Background sync to pull newest Google Calendar changes without blocking the user
-        fetch('/api/calendar-events?sync=true')
-          .then(res => res.json())
-          .then(syncedData => {
-            if (Array.isArray(syncedData)) {
-              setCalendarEvents(mapEvents(syncedData));
-            }
-          })
-          .catch(err => console.error('Background sync failed:', err));
       }
 
       const today = new Date().toISOString().split('T')[0];

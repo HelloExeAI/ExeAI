@@ -26,36 +26,8 @@ export default function EmailModule({ onAddTodo }: EmailModuleProps) {
   const [connectionError, setConnectionError] = useState<string | null>(null);
 
   useEffect(() => {
-    checkConnection();
+    fetchEmails();
   }, []);
-
-  useEffect(() => {
-    if (isConnected) {
-      fetchEmails();
-    } else {
-      setIsLoading(false);
-    }
-  }, [isConnected]);
-
-  const checkConnection = async () => {
-    try {
-      const res = await fetch('/api/gmail/status');
-      if (res.ok) {
-        const data = await res.json();
-        setIsConnected(data.connected);
-        if (data.error) {
-          setConnectionError(data.error);
-        }
-      } else {
-        setIsConnected(false);
-      }
-    } catch (error) {
-      console.error('Connection check failed:', error);
-      setIsConnected(false);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const fetchEmails = async () => {
     setConnectionError(null);
@@ -80,16 +52,20 @@ export default function EmailModule({ onAddTodo }: EmailModuleProps) {
             date: new Date(e.date)
           }));
           setEmails(formatted);
+          setIsConnected(true);
           localStorage.setItem('cached_gmail_emails', JSON.stringify(data));
         } else if (data.error) {
           setConnectionError(data.error);
-          if (data.error === 'Gmail not connected' || data.error === 'Failed to refresh token') {
+          if (data.error === 'Gmail not connected' || data.error === 'Failed to refresh token' || data.error.includes('Permissions') || data.error.includes('Unauthorized')) {
             setIsConnected(false);
           }
         }
       } else {
         const errorData = await res.json();
         setConnectionError(errorData.error || 'Failed to fetch emails');
+        if (errorData.error === 'Gmail not connected' || errorData.error === 'Unauthorized' || res.status === 401 || res.status === 400 || res.status === 403) {
+          setIsConnected(false);
+        }
       }
     } catch (error) {
       console.error('Email fetch failed:', error);

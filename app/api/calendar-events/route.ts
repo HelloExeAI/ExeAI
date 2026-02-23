@@ -45,8 +45,10 @@ export async function GET(request: NextRequest) {
       const calendar = await getCalendarClient(user.id);
 
       const now = new Date();
-      const timeMin = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const timeMax = new Date(now.getFullYear(), now.getMonth() + 6, 1);
+      const timeMin = new Date();
+      timeMin.setDate(now.getDate() - 14); // 2 weeks back
+      const timeMax = new Date();
+      timeMax.setDate(now.getDate() + 60); // 60 days forward
 
       const response = await calendar.events.list({
         calendarId: 'primary',
