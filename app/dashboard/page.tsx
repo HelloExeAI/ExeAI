@@ -224,56 +224,58 @@ export default function Dashboard() {
   const handleCompleteTodo = async (noteId: string, completed: boolean) => {
     if (!currentPage) return;
 
+    // OPTIMISTIC UPDATE: instantly update the local state.
+    // CenterPanel's `useEffect` will automatically see this new state and save it
+    // directly into your unified JSON blob for today via `/api/daily-note`.
+    const updatedNotes = currentPage.notes.map((note) =>
+      note.id === noteId ? { ...note, completed } : note
+    );
+
+    setCurrentPage({
+      ...currentPage,
+      notes: updatedNotes,
+      lastModified: new Date(),
+    });
+
+    if (completed) {
+      displayToast('Task completed!');
+    }
+
     try {
-      const response = await fetch(`/api/notes/${noteId}`, {
+      // Background attempt to update in Prisma 'Task' table (for legacy notes)
+      await fetch(`/api/notes/${noteId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ completed }),
       });
-
-      if (response.ok) {
-        const updatedNotes = currentPage.notes.map((note) =>
-          note.id === noteId ? { ...note, completed } : note
-        );
-
-        setCurrentPage({
-          ...currentPage,
-          notes: updatedNotes,
-          lastModified: new Date(),
-        });
-
-        if (completed) {
-          displayToast('Task completed!');
-        }
-      }
     } catch (error) {
-      console.error('Failed to update todo:', error);
+      // Fails silently for JSON stored variables, which is expected and fine!
     }
   };
 
   const handleDeleteTodo = async (noteId: string) => {
     if (!currentPage) return;
 
+    // OPTIMISTIC UPDATE
+    const filteredNotes = currentPage.notes.filter(
+      (note) => note.id !== noteId
+    );
+
+    setCurrentPage({
+      ...currentPage,
+      notes: filteredNotes,
+      lastModified: new Date(),
+    });
+
+    displayToast('Task deleted');
+
     try {
-      const response = await fetch(`/api/notes/${noteId}`, {
+      // Background attempt
+      await fetch(`/api/notes/${noteId}`, {
         method: 'DELETE',
       });
-
-      if (response.ok) {
-        const filteredNotes = currentPage.notes.filter(
-          (note) => note.id !== noteId
-        );
-
-        setCurrentPage({
-          ...currentPage,
-          notes: filteredNotes,
-          lastModified: new Date(),
-        });
-
-        displayToast('Task deleted');
-      }
     } catch (error) {
-      console.error('Failed to delete todo:', error);
+      // Ignore
     }
   };
 
@@ -326,28 +328,27 @@ export default function Dashboard() {
   const handleUpdateTodo = async (noteId: string, updates: Partial<Note>) => {
     if (!currentPage) return;
 
+    // OPTIMISTIC UPDATE
+    const updatedNotes = currentPage.notes.map((note) =>
+      note.id === noteId ? { ...note, ...updates } : note
+    );
+
+    setCurrentPage({
+      ...currentPage,
+      notes: updatedNotes,
+      lastModified: new Date(),
+    });
+
+    displayToast('Task updated!');
+
     try {
-      const response = await fetch(`/api/notes/${noteId}`, {
+      await fetch(`/api/notes/${noteId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates),
       });
-
-      if (response.ok) {
-        const updatedNotes = currentPage.notes.map((note) =>
-          note.id === noteId ? { ...note, ...updates } : note
-        );
-
-        setCurrentPage({
-          ...currentPage,
-          notes: updatedNotes,
-          lastModified: new Date(),
-        });
-
-        displayToast('Task updated!');
-      }
     } catch (error) {
-      console.error('Failed to update todo:', error);
+      // Ignored for JSON stored tasks
     }
   };
 
