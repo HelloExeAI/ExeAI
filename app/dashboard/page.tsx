@@ -48,16 +48,26 @@ export default function Dashboard() {
         };
       });
 
-      // Background sync to pull newest Google Calendar changes without blocking the user
-      // Fired concurrently for faster eventual UI refresh
-      fetch('/api/calendar-events?sync=true')
+      // 1. FAST BACKGROUND SYNC for today's events!
+      fetch('/api/calendar-events?sync=today')
         .then(res => res.json())
         .then(syncedData => {
           if (Array.isArray(syncedData)) {
             setCalendarEvents(mapEvents(syncedData));
           }
+
+          // 2. SLOW BACKGROUND SYNC for the next 6 months
+          fetch('/api/calendar-events?sync=full')
+            .then(res => res.json())
+            .then(fullSyncedData => {
+              if (Array.isArray(fullSyncedData)) {
+                setCalendarEvents(mapEvents(fullSyncedData));
+              }
+            })
+            .catch(err => console.error('Full 6-month background sync failed:', err));
+
         })
-        .catch(err => console.error('Background sync failed:', err));
+        .catch(err => console.error('Today background sync failed:', err));
 
       const eventsResponse = await fetch('/api/calendar-events');
       if (eventsResponse.ok) {

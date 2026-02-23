@@ -25,10 +25,11 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const shouldSync = searchParams.get('sync') === 'true';
+    const syncParam = searchParams.get('sync');
+    const syncType = syncParam === 'true' ? 'full' : syncParam; // Backward compatibility
 
     // 1. Return local events INSTANTLY for normal loads (99% faster)
-    if (!shouldSync) {
+    if (!syncType || syncType === 'false') {
       const events = await prisma.task.findMany({
         where: {
           userId: user.id,
@@ -40,15 +41,23 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(events);
     }
 
-    // 2. Only run the 6-month deep Google Calendar Sync when explicitly requested
+    // 2. Run Google Calendar Sync based on requested time window (today vs 6 months)
     try {
       const calendar = await getCalendarClient(user.id);
 
       const now = new Date();
       const timeMin = new Date();
-      timeMin.setDate(now.getDate() - 14); // 2 weeks back
       const timeMax = new Date();
-      timeMax.setDate(now.getDate() + 60); // 60 days forward
+
+      if (syncType === 'today') {
+        // Fast sync: strictly today
+        timeMin.setHours(0, 0, 0, 0);
+        timeMax.setHours(23, 59, 59, 999);
+      } else {
+        // Comprehensive sync: 2 weeks back, 6 months forward 
+        timeMin.setDate(now.getDate() - 14);
+        timeMax.setMonth(now.getMonth() + 6);
+      }
 
       const response = await calendar.events.list({
         calendarId: 'primary',
