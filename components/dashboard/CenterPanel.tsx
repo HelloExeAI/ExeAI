@@ -95,27 +95,69 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
 
   // Load page based on current date
   useEffect(() => {
-    const dateTitle = formatDateLong(currentDate);
-    const datePage = getOrCreatePage(dateTitle);
+    const loadDailyNote = async () => {
+      const dateTitle = formatDateLong(currentDate);
+      const dateStr = formatDateAPI(currentDate);
 
-    if (datePage.notes.length === 0) {
-      const firstNote: Note = {
-        id: Date.now().toString(),
-        content: '',
-        type: 'note',
-        createdAt: new Date(),
-        pageId: datePage.id,
-        linkedPages: [],
-        children: [],
-        parentId: null,
-        indent: 0,
-        completed: false
-      };
-      datePage.notes = [firstNote];
-      setFocusedNoteId(firstNote.id);
-    }
+      try {
+        const response = await fetch(`/api/daily-note?date=${dateStr}`);
+        const data = await response.json();
 
-    setCurrentPage(datePage);
+        let notesData: Note[] = [];
+        if (data.success && data.note && data.note.content) {
+          try {
+            notesData = JSON.parse(data.note.content);
+          } catch (e) {
+            console.error('Failed to parse note content', e);
+          }
+        }
+
+        if (!notesData || notesData.length === 0) {
+          const firstNote: Note = {
+            id: Date.now().toString(),
+            content: '',
+            type: 'note',
+            createdAt: new Date(),
+            pageId: Date.now().toString(),
+            linkedPages: [],
+            children: [],
+            parentId: null,
+            indent: 0,
+            completed: false
+          };
+          notesData = [firstNote];
+        }
+
+        let datePage = allPages.find(p => p.title === dateTitle);
+        if (!datePage) {
+          datePage = {
+            id: Date.now().toString(),
+            title: dateTitle,
+            createdAt: new Date(),
+            lastModified: new Date(),
+            notes: notesData
+          };
+          setAllPages(prev => {
+            if (prev.find(p => p.title === dateTitle)) return prev;
+            return [...prev, datePage!];
+          });
+        } else {
+          datePage.notes = notesData;
+          setAllPages(prev => prev.map(p => p.id === datePage!.id ? { ...p, notes: notesData } : p));
+        }
+
+        setCurrentPage(datePage);
+
+        // Auto-focus empty first note
+        if (notesData.length === 1 && notesData[0].content === '') {
+          setFocusedNoteId(notesData[0].id);
+        }
+      } catch (error) {
+        console.error('Error fetching daily note from DB:', error);
+      }
+    };
+
+    loadDailyNote();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentDate]);
 
@@ -711,7 +753,7 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
     const tree = buildNoteTree(notes);
 
     return tree.map((note) => (
-      <div key={note.id} style={{ marginLeft: `${level * 28}px` }}>
+      <div key={note.id} style={{ position: 'relative' }}>
         <div
           style={{
             display: 'flex',
@@ -768,7 +810,12 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
         </div>
 
         {note.children && note.children.length > 0 && (
-          <div style={{ marginTop: '0px' }}>
+          <div style={{
+            marginTop: '2px',
+            marginLeft: '8px',
+            paddingLeft: '14px',
+            borderLeft: '1px solid #CBD5E1'
+          }}>
             {renderBulletTree(note.children, level + 1)}
           </div>
         )}

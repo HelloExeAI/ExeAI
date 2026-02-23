@@ -58,17 +58,29 @@ export default function EmailModule({ onAddTodo }: EmailModuleProps) {
   };
 
   const fetchEmails = async () => {
-    setIsLoading(true);
     setConnectionError(null);
+    const cached = localStorage.getItem('cached_gmail_emails');
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        setEmails(parsed.map((e: any) => ({ ...e, date: new Date(e.date) })));
+        setIsLoading(false); // Instantly show cached emails
+      } catch (err) { }
+    } else {
+      setIsLoading(true);
+    }
+
     try {
       const res = await fetch('/api/gmail/emails');
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
-          setEmails(data.map((e: any) => ({
+          const formatted = data.map((e: any) => ({
             ...e,
             date: new Date(e.date)
-          })));
+          }));
+          setEmails(formatted);
+          localStorage.setItem('cached_gmail_emails', JSON.stringify(data));
         } else if (data.error) {
           setConnectionError(data.error);
           if (data.error === 'Gmail not connected' || data.error === 'Failed to refresh token') {
@@ -81,7 +93,9 @@ export default function EmailModule({ onAddTodo }: EmailModuleProps) {
       }
     } catch (error) {
       console.error('Email fetch failed:', error);
-      setConnectionError('Network error while fetching emails');
+      if (!cached) {
+        setConnectionError('Network error while fetching emails');
+      }
     } finally {
       setIsLoading(false);
     }

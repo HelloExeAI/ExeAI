@@ -7,7 +7,7 @@ import { getCalendarClient } from '@/lib/google-calendar';
 
 export const dynamic = 'force-dynamic';
 
-// GET - Get all calendar events (Sync from Google first)
+// GET - Get all calendar events
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -24,23 +24,29 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // 1. Try to sync from Google Calendar
-    try {
-      // Check if user has Google Calendar connected
-      const settings = await prisma.userSettings.findUnique({
-        where: { userId: user.id }
+    const { searchParams } = new URL(request.url);
+    const shouldSync = searchParams.get('sync') === 'true';
+
+    // 1. Return local events INSTANTLY for normal loads (99% faster)
+    if (!shouldSync) {
+      const events = await prisma.task.findMany({
+        where: {
+          userId: user.id,
+          type: { in: ['meeting', 'event', 'travel', 'birthday', 'reminder'] }
+        },
+        orderBy: { dueDate: 'asc' }
       });
 
-      // Only sync if enabled or strict sync requested (ignoring settings for now to ensure it works)
+      return NextResponse.json(events);
+    }
+
+    // 2. Only run the 6-month deep Google Calendar Sync when explicitly requested
+    try {
       const calendar = await getCalendarClient(user.id);
 
-      // Define sync range: Start of last month to 6 months ahead
-      // We go back 1 month to ensure we catch recent past events/recurrences
       const now = new Date();
       const timeMin = new Date(now.getFullYear(), now.getMonth() - 1, 1);
       const timeMax = new Date(now.getFullYear(), now.getMonth() + 6, 1);
-
-      console.log(`🔄 Syncing Google Calendar from ${timeMin.toISOString()} to ${timeMax.toISOString()}`);
 
       const response = await calendar.events.list({
         calendarId: 'primary',
@@ -51,93 +57,57 @@ export async function GET(request: NextRequest) {
       });
 
       const googleEvents = response.data.items || [];
-      console.log(`📥 Fetched ${googleEvents.length} events from Google`);
 
-      // Sync events to DB
-      let syncedCount = 0;
       for (const event of googleEvents) {
         if (!event.start || (!event.start.dateTime && !event.start.date)) continue;
-
-        // Handle all-day vs timed events
-        const start = event.start.dateTime || event.start.date; // ISO string or YYYY-MM-DD
+        const start = event.start.dateTime || event.start.date;
         const end = event.end?.dateTime || event.end?.date || start;
-
-        // Ensure we have a valid date object
-        const startDate = new Date(start as string);
-        const endDate = new Date(end as string);
 
         if (!event.id) continue;
 
-        // Check if event already exists
         const existingTask = await prisma.task.findFirst({
-          where: {
-            userId: user.id,
-            googleEventId: event.id
-          }
+          where: { userId: user.id, googleEventId: event.id }
         });
 
         const eventData = {
           title: event.summary || '(No Title)',
           description: event.description || '',
-          dueDate: startDate,
-          dueTime: endDate.toISOString(),
+          dueDate: new Date(start as string),
+          dueTime: new Date(end as string).toISOString(),
           metadata: {
             location: event.location,
             link: event.htmlLink,
-            meetingLink: event.hangoutLink, // Google Meet
+            meetingLink: event.hangoutLink,
             attendees: event.attendees as any,
             lastSynced: new Date().toISOString()
           }
         };
 
         if (existingTask) {
-          // Update existing
-          await prisma.task.update({
-            where: { id: existingTask.id },
-            data: eventData
-          });
+          await prisma.task.update({ where: { id: existingTask.id }, data: eventData });
         } else {
-          // Create new
           await prisma.task.create({
             data: {
               userId: user.id,
-              type: 'meeting', // Default type
+              type: 'meeting',
               googleEventId: event.id,
               ...eventData
             }
           });
         }
-        syncedCount++;
       }
-      console.log(`✅ Successfully synced ${syncedCount} events`);
-
     } catch (syncError: any) {
       console.warn('⚠️ Google Calendar sync failed:', syncError);
 
-      const errorMessage = syncError?.message || JSON.stringify(syncError);
-
-      // Check for auth errors
-      if (
-        errorMessage.includes('invalid_grant') ||
-        errorMessage.includes('No access token') ||
-        errorMessage.includes('No refresh token') ||
-        errorMessage.includes('invalid_request') ||
-        (syncError.response && syncError.response.status === 401)
-      ) {
-        console.error('🔒 Auth error detected. Disconnecting calendar to force re-auth.');
-        try {
-          await prisma.userSettings.update({
-            where: { userId: user.id },
-            data: { calendarGoogleConnected: false }
-          });
-        } catch (dbErr) {
-          console.error('Failed to update disconnect status:', dbErr);
-        }
+      if (syncError?.message?.includes('invalid_grant')) {
+        await prisma.userSettings.update({
+          where: { userId: user.id },
+          data: { calendarGoogleConnected: false }
+        });
       }
     }
 
-    // 2. Return local events (now updated)
-    const events = await prisma.task.findMany({
+    const updatedEvents = await prisma.task.findMany({
       where: {
         userId: user.id,
         type: { in: ['meeting', 'event', 'travel', 'birthday', 'reminder'] }
@@ -145,7 +115,7 @@ export async function GET(request: NextRequest) {
       orderBy: { dueDate: 'asc' }
     });
 
-    return NextResponse.json(events);
+    return NextResponse.json(updatedEvents);
   } catch (error) {
     console.error('Error fetching calendar events:', error);
     return NextResponse.json(

@@ -32,36 +32,37 @@ export default function Dashboard() {
       const eventsResponse = await fetch('/api/calendar-events');
       if (eventsResponse.ok) {
         const eventsData = await eventsResponse.json();
-        setCalendarEvents(
-          eventsData.map((event: any) => {
-            // Map backend fields (dueDate, dueTime) to frontend fields (start, end)
-            const startDate = new Date(event.dueDate);
-            // If dueTime is ISO string (as we sync now), use it
-            // If it's time string HH:mm, parse it
-            // Actually our sync saves dueTime as ISO string of the END time
 
-            let endDate = new Date(startDate);
-            if (event.dueTime) {
-              // Try parsing dueTime as ISO
-              const parsedEnd = new Date(event.dueTime);
-              if (!isNaN(parsedEnd.getTime())) {
-                endDate = parsedEnd;
-                // Also ensure start time part is correct if stored in dueDate and it was 00:00
-              }
-            } else {
-              // Default 1 hour duration
-              endDate.setHours(endDate.getHours() + 1);
+        const mapEvents = (events: any[]) => events.map((event: any) => {
+          const startDate = new Date(event.dueDate);
+          let endDate = new Date(startDate);
+          if (event.dueTime) {
+            const parsedEnd = new Date(event.dueTime);
+            if (!isNaN(parsedEnd.getTime())) {
+              endDate = parsedEnd;
             }
+          } else {
+            endDate.setHours(endDate.getHours() + 1);
+          }
+          return {
+            ...event,
+            start: startDate,
+            end: endDate,
+            type: event.type || 'event'
+          };
+        });
 
-            return {
-              ...event,
-              start: startDate,
-              end: endDate,
-              // Ensure type is valid
-              type: event.type || 'event'
-            };
+        setCalendarEvents(mapEvents(eventsData));
+
+        // Background sync to pull newest Google Calendar changes without blocking the user
+        fetch('/api/calendar-events?sync=true')
+          .then(res => res.json())
+          .then(syncedData => {
+            if (Array.isArray(syncedData)) {
+              setCalendarEvents(mapEvents(syncedData));
+            }
           })
-        );
+          .catch(err => console.error('Background sync failed:', err));
       }
 
       const today = new Date().toISOString().split('T')[0];

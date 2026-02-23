@@ -31,15 +31,28 @@ export default function Dashboard() {
   // Load user's data from database
   const loadUserData = async () => {
     try {
-      // Load calendar events from API
+      // Load calendar events from API (local DB syncs instantly)
       const eventsResponse = await fetch('/api/calendar-events');
       if (eventsResponse.ok) {
         const eventsData = await eventsResponse.json();
-        setCalendarEvents(eventsData.map((event: any) => ({
+
+        const mapEvents = (events: any[]) => events.map((event: any) => ({
           ...event,
-          start: new Date(event.start),
-          end: new Date(event.end)
-        })));
+          start: new Date(event.start || event.dueDate),
+          end: new Date(event.end || event.dueTime || event.dueDate)
+        }));
+
+        setCalendarEvents(mapEvents(eventsData));
+
+        // Background Google sync
+        fetch('/api/calendar-events?sync=true')
+          .then(res => res.json())
+          .then(syncedData => {
+            if (Array.isArray(syncedData)) {
+              setCalendarEvents(mapEvents(syncedData));
+            }
+          })
+          .catch(err => console.error('Background sync failed:', err));
       }
 
       // Load today's notes from API
