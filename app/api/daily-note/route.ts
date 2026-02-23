@@ -6,7 +6,7 @@ import prisma from '@/lib/prisma';
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session?.user?.email) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
@@ -35,10 +35,19 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const startOfDay = new Date(date);
+    startOfDay.setUTCHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(date);
+    endOfDay.setUTCHours(23, 59, 59, 999);
+
     const dailyNote = await prisma.dailyNote.findFirst({
       where: {
         userId: user.id,
-        date: new Date(date)
+        date: {
+          gte: startOfDay,
+          lte: endOfDay
+        }
       }
     });
 
@@ -65,7 +74,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session?.user?.email) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
@@ -94,11 +103,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const startOfDay = new Date(date);
+    startOfDay.setUTCHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(date);
+    endOfDay.setUTCHours(23, 59, 59, 999);
+
     // Find existing note
     const existingNote = await prisma.dailyNote.findFirst({
       where: {
         userId: user.id,
-        date: new Date(date)
+        date: {
+          gte: startOfDay,
+          lte: endOfDay
+        }
       }
     });
 
@@ -114,11 +132,11 @@ export async function POST(request: NextRequest) {
         }
       });
     } else {
-      // Create new note
+      // Create new note using the strict UTC bounds
       dailyNote = await prisma.dailyNote.create({
         data: {
           userId: user.id,
-          date: new Date(date),
+          date: startOfDay,
           content: content
         }
       });
