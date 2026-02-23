@@ -6,6 +6,8 @@
 import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 
+import Image from 'next/image'
+
 export default function UserProfile() {
   const { data: session, status } = useSession()
   const router = useRouter()
@@ -31,15 +33,17 @@ export default function UserProfile() {
   return (
     <div className="flex items-center gap-4">
       {/* User avatar */}
-      {session.user.image ? (
-        <img
+      {session.user?.image ? (
+        <Image
           src={session.user.image}
           alt={session.user.name || 'User'}
-          className="w-10 h-10 rounded-full"
+          width={40}
+          height={40}
+          className="rounded-full"
         />
       ) : (
         <div className="w-10 h-10 rounded-full bg-yellow-500 flex items-center justify-center text-white font-semibold">
-          {session.user.name?.[0] || session.user.email?.[0] || 'U'}
+          {session.user?.name?.[0] || session.user?.email?.[0] || 'U'}
         </div>
       )}
 

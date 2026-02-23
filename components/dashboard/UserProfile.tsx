@@ -5,6 +5,8 @@ import React, { useState } from 'react';
 import { signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 
+import Image from 'next/image';
+
 interface UserProfileProps {
   username?: string;
   email?: string;
@@ -59,14 +61,12 @@ export default function UserProfile({ username = 'User', email = '', profileImag
           overflow: 'hidden'
         }}>
           {profileImage ? (
-            <img 
-              src={profileImage} 
+            <Image
+              src={profileImage}
               alt={username}
-              style={{ 
-                width: '100%', 
-                height: '100%', 
-                objectFit: 'cover' 
-              }}
+              width={36}
+              height={36}
+              style={{ objectFit: 'cover' }}
             />
           ) : (
             <span>{username.charAt(0).toUpperCase()}</span>
@@ -74,30 +74,30 @@ export default function UserProfile({ username = 'User', email = '', profileImag
         </div>
 
         {/* User Name */}
-        <div style={{ 
-          fontSize: '15px', 
-          fontWeight: '600', 
+        <div style={{
+          fontSize: '15px',
+          fontWeight: '600',
           color: '#1F2937'
         }}>
           {username}
         </div>
 
         {/* Dropdown Arrow */}
-        <svg 
-          width="14" 
-          height="14" 
-          viewBox="0 0 16 16" 
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 16 16"
           fill="none"
           style={{
             transition: 'transform 0.2s',
             transform: showProfileMenu ? 'rotate(180deg)' : 'rotate(0deg)'
           }}
         >
-          <path 
-            d="M4 6L8 10L12 6" 
-            stroke="#6B7280" 
-            strokeWidth="2" 
-            strokeLinecap="round" 
+          <path
+            d="M4 6L8 10L12 6"
+            stroke="#6B7280"
+            strokeWidth="2"
+            strokeLinecap="round"
             strokeLinejoin="round"
           />
         </svg>
@@ -107,7 +107,7 @@ export default function UserProfile({ username = 'User', email = '', profileImag
       {showProfileMenu && (
         <>
           {/* Backdrop */}
-          <div 
+          <div
             onClick={() => setShowProfileMenu(false)}
             style={{
               position: 'fixed',
@@ -118,7 +118,7 @@ export default function UserProfile({ username = 'User', email = '', profileImag
               zIndex: 998
             }}
           />
-          
+
           {/* Menu */}
           <div style={{
             position: 'absolute',
@@ -139,16 +139,16 @@ export default function UserProfile({ username = 'User', email = '', profileImag
               borderBottom: '1px solid #F3F4F6',
               backgroundColor: '#F9FAFB'
             }}>
-              <div style={{ 
-                fontSize: '14px', 
-                fontWeight: '600', 
+              <div style={{
+                fontSize: '14px',
+                fontWeight: '600',
                 color: '#1F2937',
                 marginBottom: '4px'
               }}>
                 {username}
               </div>
-              <div style={{ 
-                fontSize: '12px', 
+              <div style={{
+                fontSize: '12px',
                 color: '#6B7280'
               }}>
                 {email}
@@ -166,15 +166,15 @@ export default function UserProfile({ username = 'User', email = '', profileImag
             }}>
               <span style={{ fontSize: '16px' }}>⏳</span>
               <div>
-                <div style={{ 
-                  fontSize: '12px', 
-                  fontWeight: '600', 
+                <div style={{
+                  fontSize: '12px',
+                  fontWeight: '600',
                   color: '#92400E'
                 }}>
                   14 Days Trial Remaining
                 </div>
-                <div style={{ 
-                  fontSize: '11px', 
+                <div style={{
+                  fontSize: '11px',
                   color: '#B45309'
                 }}>
                   Upgrade to unlock all features
