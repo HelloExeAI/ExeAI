@@ -850,6 +850,7 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
           onSearchToggle={handleSearchToggle}
           onPagesToggle={handlePagesToggle}
           onCalendarToggle={handleCalendarToggle}
+          onDateChange={(date) => setCurrentDate(date)}
         />
 
         {/* Main Editor Area */}

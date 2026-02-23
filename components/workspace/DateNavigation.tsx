@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { formatDateLong, isToday } from '@/lib/helpers/dateHelpers';
 
 interface DateNavigationProps {
@@ -11,6 +11,7 @@ interface DateNavigationProps {
   onSearchToggle?: () => void;
   onPagesToggle?: () => void;
   onCalendarToggle?: () => void;
+  onDateChange?: (date: Date) => void;
 }
 
 export default function DateNavigation({
@@ -20,8 +21,39 @@ export default function DateNavigation({
   onToday,
   onSearchToggle,
   onPagesToggle,
-  onCalendarToggle
+  onCalendarToggle,
+  onDateChange
 }: DateNavigationProps) {
+  const [showMonthPicker, setShowMonthPicker] = useState(false);
+  const [showYearPicker, setShowYearPicker] = useState(false);
+
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+  const generateYears = () => {
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    for (let i = currentYear - 10; i <= currentYear + 10; i++) {
+      years.push(i);
+    }
+    return years;
+  };
+
+  const years = generateYears();
+
+  const handleMonthChange = (monthIndex: number) => {
+    if (onDateChange) {
+      onDateChange(new Date(currentDate.getFullYear(), monthIndex, currentDate.getDate()));
+    }
+    setShowMonthPicker(false);
+  };
+
+  const handleYearChange = (year: number) => {
+    if (onDateChange) {
+      onDateChange(new Date(year, currentDate.getMonth(), currentDate.getDate()));
+    }
+    setShowYearPicker(false);
+  };
+
   return (
     <div style={{
       height: '60px',
@@ -65,21 +97,157 @@ export default function DateNavigation({
         ←
       </button>
 
-      {/* Center: Date Display */}
+      {/* Center: Date Dropdowns Display */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
-        gap: '12px'
+        gap: '6px'
       }}>
-        <h2 style={{
-          margin: 0,
-          fontSize: '18px',
-          fontWeight: '600',
-          color: '#1F2937',
-          letterSpacing: '-0.01em'
-        }}>
-          {formatDateLong(currentDate)}
-        </h2>
+        {/* Month Picker */}
+        <div style={{ position: 'relative' }}>
+          <button
+            onClick={() => {
+              setShowMonthPicker(!showMonthPicker);
+              setShowYearPicker(false);
+            }}
+            style={{
+              padding: '6px 12px',
+              borderRadius: '8px',
+              border: 'none',
+              backgroundColor: '#F3F4F6',
+              color: '#1F2937',
+              fontSize: '18px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              letterSpacing: '-0.01em'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#E5E7EB'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#F3F4F6'}
+          >
+            {monthNames[currentDate.getMonth()]} {currentDate.getDate()}
+          </button>
+
+          {showMonthPicker && (
+            <div style={{
+              position: 'absolute',
+              top: '100%',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              marginTop: '8px',
+              backgroundColor: 'white',
+              border: '1px solid #E5E7EB',
+              borderRadius: '12px',
+              boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
+              zIndex: 1000,
+              maxHeight: '300px',
+              overflowY: 'auto',
+              width: '140px'
+            }}>
+              {monthNames.map((month, index) => (
+                <div
+                  key={month}
+                  onClick={() => handleMonthChange(index)}
+                  style={{
+                    padding: '10px 16px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: currentDate.getMonth() === index ? '600' : '500',
+                    color: currentDate.getMonth() === index ? '#3B82F6' : '#1F2937',
+                    backgroundColor: currentDate.getMonth() === index ? '#EFF6FF' : 'transparent',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (currentDate.getMonth() !== index) {
+                      e.currentTarget.style.backgroundColor = '#F9FAFB';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (currentDate.getMonth() !== index) {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }
+                  }}
+                >
+                  {month}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Year Picker */}
+        <div style={{ position: 'relative' }}>
+          <button
+            onClick={() => {
+              setShowYearPicker(!showYearPicker);
+              setShowMonthPicker(false);
+            }}
+            style={{
+              padding: '6px 12px',
+              borderRadius: '8px',
+              border: 'none',
+              backgroundColor: '#F3F4F6',
+              color: '#1F2937',
+              fontSize: '18px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              letterSpacing: '-0.01em'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#E5E7EB'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#F3F4F6'}
+          >
+            {currentDate.getFullYear()}
+          </button>
+
+          {showYearPicker && (
+            <div style={{
+              position: 'absolute',
+              top: '100%',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              marginTop: '8px',
+              backgroundColor: 'white',
+              border: '1px solid #E5E7EB',
+              borderRadius: '12px',
+              boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
+              zIndex: 1000,
+              maxHeight: '300px',
+              overflowY: 'auto',
+              width: '100px'
+            }}>
+              {years.map(year => (
+                <div
+                  key={year}
+                  onClick={() => handleYearChange(year)}
+                  style={{
+                    padding: '10px 16px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: currentDate.getFullYear() === year ? '600' : '500',
+                    color: currentDate.getFullYear() === year ? '#3B82F6' : '#1F2937',
+                    backgroundColor: currentDate.getFullYear() === year ? '#EFF6FF' : 'transparent',
+                    transition: 'all 0.2s',
+                    textAlign: 'center'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (currentDate.getFullYear() !== year) {
+                      e.currentTarget.style.backgroundColor = '#F9FAFB';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (currentDate.getFullYear() !== year) {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }
+                  }}
+                >
+                  {year}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         {isToday(currentDate) && (
           <span style={{
             padding: '3px 10px',
@@ -89,7 +257,8 @@ export default function DateNavigation({
             fontSize: '10px',
             fontWeight: '700',
             color: '#92400E',
-            letterSpacing: '0.05em'
+            letterSpacing: '0.05em',
+            marginLeft: '8px'
           }}>
             TODAY
           </span>
