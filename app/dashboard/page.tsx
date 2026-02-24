@@ -75,8 +75,13 @@ export default function Dashboard() {
         setCalendarEvents(mapEvents(eventsData));
       }
 
-      const today = new Date().toISOString().split('T')[0];
-      const notesResponse = await fetch(`/api/notes?date=${today}`);
+      const todayDate = new Date();
+      const year = todayDate.getFullYear();
+      const month = String(todayDate.getMonth() + 1).padStart(2, '0');
+      const day = String(todayDate.getDate()).padStart(2, '0');
+      const todayStr = `${year}-${month}-${day}`;
+
+      const notesResponse = await fetch(`/api/notes?date=${todayStr}`);
       if (notesResponse.ok) {
         const noteData = await notesResponse.json();
         if (noteData) {
