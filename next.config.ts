@@ -24,6 +24,18 @@ const nextConfig: NextConfig = {
   },
   // Prevent Next.js from tracing/bundling native node libraries that throw build errors
   serverExternalPackages: ['@whiskeysockets/baileys'],
+  webpack: (config) => {
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      'why-is-node-running': false,
+    };
+    // Exclude test directories from Webpack parsing entirely
+    config.module.rules.push({
+      test: /node_modules\/@whiskeysockets\/baileys\/.*\/test\/.*$/,
+      use: 'null-loader',
+    });
+    return config;
+  },
 };
 
 export default nextConfig;
