@@ -22,6 +22,8 @@ const nextConfig: NextConfig = {
     // Other experimental performance optimizations
     optimizePackageImports: ["lucide-react", "date-fns"],
   },
+  // Prevent Next.js from tracing/bundling native node libraries that throw build errors
+  serverExternalPackages: ['@whiskeysockets/baileys'],
 };
 
 export default nextConfig;
