@@ -202,12 +202,15 @@ export default function CenterPanel({ currentPage, setCurrentPage, onAddCalendar
   // Trigger auto-save when page content changes
   useEffect(() => {
     if (currentPage && currentPage.notes.length > 0) {
-      const hasContent = currentPage.notes.some(note => note.content.trim() !== '');
+      // Ensure we are only saving the data if the currently loaded page
+      // actually belongs to the user's currently selected calendar date
+      const expectedTitle = formatDateLong(currentDate);
+      if (currentPage.title !== expectedTitle) return;
 
-      if (hasContent) {
-        const contentStr = JSON.stringify(currentPage.notes);
-        autoSaveToAPI(currentDate, contentStr);
-      }
+      // We always save the content, even if it's an empty bullet,
+      // so users can clear their daily notes without them resurrecting on refresh.
+      const contentStr = JSON.stringify(currentPage.notes);
+      autoSaveToAPI(currentDate, contentStr);
     }
   }, [currentPage, autoSaveToAPI, currentDate]);
 
